@@ -80,8 +80,8 @@ function load () {
   off -= 4
   const bufferSize = dv.getUint32(off)
   off -= 4
-  off -= 6
   const recordSize = dv.getUint32(off)
+  off -= 6
   off -= nodes * 64
   const disruptor = new Disruptor(bufferSize, recordSize, idleMode, shared)
   for (let i = 0; i < nodes; i++) {
@@ -127,6 +127,10 @@ class Disruptor {
     const node = new Node(name, this, source)
     this.nodes.push(node)
     return node
+  }
+
+  claim (index) {
+    return this.bufferSize - (index - this.tortoise())
   }
 
   async run () {
@@ -219,6 +223,9 @@ class Node {
     this.source = source
     this.offset = 0
     this.u32 = disruptor.u32
+    this.bufferSize = disruptor.bufferSize
+    this.recordSize = disruptor.recordSize
+    this.index = 0
   }
 
   follow (...producers) {
@@ -226,6 +233,15 @@ class Node {
     for (const producer of producers) {
       producer.followers.push(this)
     }
+  }
+
+  claim (index) {
+    if (this.leaders.length) return this.hare() - index
+    return this.disruptor.claim(index)
+  }
+
+  publish (index) {
+    Atomics.store(this.u32, this.offset / 4, index)
   }
 
   hare () {
@@ -238,6 +254,22 @@ class Node {
 
   tortoise () {
     return Math.min(...this.followers.map(f => f.counter()))
+  }
+
+  location (index) {
+    return (index % this.bufferSize) * this.recordSize
+  }
+
+  start (onMessage, index = 0) {
+    this.running = true
+    while (this.running) {
+      let available = this.claim(index)
+      if (!available) continue
+      while (available--) {
+        onMessage(this.location(index), index++)
+      }
+      this.publish(index)
+    }
   }
 
   async run () {

@@ -3,9 +3,7 @@ const name = just.args[1]
 const disruptor = load()
 const node = disruptor.find(name)
 
-const u32 = new Uint32Array(disruptor.buffer)
 const dv = new DataView(disruptor.buffer)
-
 let lastid = 0
 
 function handleMessage (off, index) {
@@ -18,17 +16,13 @@ function handleMessage (off, index) {
 
 function main () {
   let index = 0
-  const offset = node.offset / 4
-  const slots = disruptor.bufferSize
-
   while (1) {
-    let available = node.hare() - index
+    let available = node.claim(index)
     if (!available) continue
     while (available--) {
-      handleMessage((index % slots) * 64, index++)
+      handleMessage(node.location(index), index++)
     }
-    Atomics.store(u32, offset, index)
-    //just.sys.nanosleep(0, 1)
+    node.publish(index)
   }
 }
 
