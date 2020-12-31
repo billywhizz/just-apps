@@ -1,36 +1,27 @@
 const { load } = require('disruptor.js')
 const name = just.args[1]
-const disruptor = load()
+const disruptor = load().disruptor
 const node = disruptor.find(name)
-disruptor.dump()
-const u32 = new Uint32Array(disruptor.buffer)
-const dv = new DataView(disruptor.buffer)
 
-just.print(`node ${node.name} ${node.offset}`)
-const followers = []
-for (const follower of node.followers) {
-  just.print(`follower ${follower.name} ${follower.offset}`)
-  followers.push(follower.offset / 4)
-}
+const dv = new DataView(disruptor.buffer)
 
 function produceMessage (off, id) {
   dv.setUint32(off, id)
 }
 
-let index = 0
-const offset = node.offset / 4
-const slots = disruptor.bufferSize
-
-while (1) {
-  let available = slots - (index - Math.min(...followers.map(off => Atomics.load(u32, off))))
-  if (!available) continue
-  while (available--) {
-    const slot = index % slots
-    const off = slot * 64
-    produceMessage(off, index++)
+function main () {
+  let index = 0
+  while (1) {
+    let available = node.claim(index)
+    if (!available) continue
+    while (available--) {
+      produceMessage(node.location(index), index++)
+    }
+    node.publish(index)
   }
-  Atomics.store(u32, offset, index)
 }
+
+main()
 
 /*
 const buf = new ArrayBuffer(65536)

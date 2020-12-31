@@ -1,45 +1,29 @@
 const { load } = require('disruptor.js')
 const name = just.args[1]
-const disruptor = load()
+const disruptor = load().disruptor
 const node = disruptor.find(name)
-disruptor.dump()
-const u32 = new Uint32Array(disruptor.buffer)
+
 const dv = new DataView(disruptor.buffer)
+let lastid = 0
 
-just.print(`node ${node.name} ${node.offset}`)
-
-const leaders = []
-for (const leader of node.leaders) {
-  just.print(`leader ${leader.name} ${leader.offset}`)
-  leaders.push(leader.offset / 4)
-}
-const followers = []
-for (const follower of node.followers) {
-  just.print(`follower ${follower.name} ${follower.offset}`)
-  followers.push(follower.offset / 4)
-}
-
-function handleMessage (off) {
+function handleMessage (off, index) {
   const id = dv.getUint32(off)
-  if (id - lastid > 1) throw new Error(`OOB ${index} ${id} ${lastid}`)
+  if (id - lastid > 1) {
+    if (id > 0) throw new Error(`OOB ${index} ${id} ${lastid}`)
+  }
   lastid = id
 }
 
-let lastid = 0
-let index = 0
-const offset = node.offset / 4
-const slots = disruptor.bufferSize
-while (1) {
-  let available = Math.min(...leaders.map(off => Atomics.load(u32, off))) - index
-  if (!available) continue
-  if (followers.length) {
-    available = slots - index + available - Math.min(...followers.map(off => Atomics.load(u32, off)))
+function main () {
+  let index = 0
+  while (1) {
+    let available = node.claim(index)
     if (!available) continue
+    while (available--) {
+      handleMessage(node.location(index), index++)
+    }
+    node.publish(index)
   }
-  while (available--) {
-    handleMessage((index % slots) * 64)
-    index++
-  }
-  Atomics.store(u32, offset, index)
-  //just.sys.sleep(1)
 }
+
+main()

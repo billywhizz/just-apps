@@ -69,7 +69,7 @@ function readString (u8, len, off) {
   return str.join('')
 }
 
-function load () {
+function load (name = just.args[1]) {
   if (!just.buffer) throw new Error('load is only available from a Node thread')
   const shared = just.buffer
   const dv = new DataView(shared)
@@ -110,7 +110,7 @@ function load () {
     }
     off += 64
   }
-  return disruptor
+  return disruptor.find(name)
 }
 
 class Disruptor {
@@ -121,6 +121,7 @@ class Disruptor {
     this.buffer = buffer || new SharedArrayBuffer((bufferSize * recordSize) + (settings.MAX_NODES * 3 * 64) + 16)
     this.nodes = []
     this.u32 = new Uint32Array(this.buffer)
+    this.dv = new DataView(this.buffer)
   }
 
   add (name, source = '') {
@@ -223,8 +224,10 @@ class Node {
     this.source = source
     this.offset = 0
     this.u32 = disruptor.u32
+    this.dv = disruptor.dv
     this.bufferSize = disruptor.bufferSize
     this.recordSize = disruptor.recordSize
+    this.buffer = disruptor.buffer
     this.index = 0
   }
 
