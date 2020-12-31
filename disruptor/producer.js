@@ -4,6 +4,7 @@ const slots = dataLen / 64
 const u32 = new Uint32Array(shared)
 const dv = new DataView(shared)
 let index = 0
+const { usleep } = just.load('sys').sys
 
 function produceMessage (off, id) {
   dv.setUint32(off, id)

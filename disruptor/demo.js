@@ -3,7 +3,7 @@ const { readFile } = require('fs')
 // const { usleep } = just.load('sys').sys
 
 const threads = []
-const BUFSIZE = 1000
+const BUFSIZE = 1024
 const shared = new SharedArrayBuffer((64 * (BUFSIZE + 2)))
 const u32 = new Uint32Array(shared)
 
