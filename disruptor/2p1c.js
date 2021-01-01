@@ -1,12 +1,13 @@
 const { Disruptor } = require('lib/disruptor.js')
 const { readFile } = require('fs')
 
-const disruptor = new Disruptor(16384)
+const disruptor = new Disruptor(1024)
 
-const producer = disruptor.add('listen', readFile('nodes/stream.js'))
-const consumer = disruptor.add('journal', readFile('nodes/logic.js'))
+const producer1 = disruptor.add('producer1', readFile('nodes/listen.js'))
+const producer2 = disruptor.add('producer2', readFile('nodes/listen.js'))
+const consumer = disruptor.add('journal', readFile('nodes/journal.js'))
 
-consumer.follow(producer)
+consumer.follow(producer1, producer2)
 
 disruptor.save()
 disruptor.run()

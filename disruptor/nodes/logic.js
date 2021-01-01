@@ -13,16 +13,14 @@ function readOrder (off) {
   o.matched = dv.getBigUint64(off + 40)
   o.flags = dv.getUint16(off + 48)
   o.tid = dv.getBigUint64(off + 50)
+  return o
 }
 
 function main () {
   let index = 0
   while (1) {
     let available = node.claim(index)
-    if (!available) {
-      just.sys.usleep(1)
-      continue
-    }
+    if (!available) continue
     while (available--) {
       const off = node.location(index)
       const type = dv.getUint16(off)

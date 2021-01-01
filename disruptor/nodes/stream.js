@@ -26,11 +26,9 @@ function onConnect (fd, event) {
     const bytes = net.recv(fd, buffer, off, wanted - off)
     if (bytes > 0) {
       let messages = Math.floor(bytes / node.recordSize)
-      if (messages !== available) {
-        //just.print(`messages ${messages} available ${available}`)
-      }
       while (messages--) {
-        node.dv.setUint32(node.location(index) + 2, index++)
+        node.dv.setUint16(node.location(index), 1)
+        node.dv.setBigUint64(node.location(index) + 2, BigInt(index++))
       }
       node.publish(index)
       return
