@@ -3,18 +3,12 @@ const { readFile } = require('fs')
 
 const disruptor = new Disruptor(4096)
 
-const listen = disruptor.add('listen', readFile('nodes/stream.js'))
-const validate = disruptor.add('validate', readFile('nodes/validate.js'))
-const journal = disruptor.add('journal', readFile('nodes/journal.js'))
-const replica = disruptor.add('replica', readFile('nodes/replica.js'))
-const logic = disruptor.add('logic', readFile('nodes/logic.js'))
-const publish = disruptor.add('publish', readFile('nodes/publish.js'))
+const producer = disruptor.add('listen', readFile('nodes/listen.js'))
+const consumer1 = disruptor.add('journal1', readFile('nodes/journal.js'))
+const consumer2 = disruptor.add('journal2', readFile('nodes/journal.js'))
 
-validate.follow(listen)
-journal.follow(validate)
-replica.follow(validate)
-logic.follow(journal, replica)
-publish.follow(logic)
+consumer1.follow(producer)
+consumer2.follow(producer)
 
 disruptor.save()
 disruptor.run()

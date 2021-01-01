@@ -1,13 +1,9 @@
-const { load } = require('disruptor.js')
-const name = just.args[1]
-const disruptor = load().disruptor
-const node = disruptor.find(name)
+const node = require('lib/disruptor.js').load()
 
-const dv = new DataView(disruptor.buffer)
 let lastid = 0
 
 function handleMessage (off, index) {
-  const id = dv.getUint32(off)
+  const id = node.dv.getUint32(off + 2)
   if (id - lastid > 1) {
     if (id > 0) throw new Error(`OOB ${index} ${id} ${lastid}`)
   }
@@ -18,7 +14,10 @@ function main () {
   let index = 0
   while (1) {
     let available = node.claim(index)
-    if (!available) continue
+    if (!available) {
+      just.sys.usleep(1)
+      continue
+    }
     while (available--) {
       handleMessage(node.location(index), index++)
     }

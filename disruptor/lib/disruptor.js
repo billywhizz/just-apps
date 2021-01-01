@@ -263,18 +263,6 @@ class Node {
     return (index % this.bufferSize) * this.recordSize
   }
 
-  start (onMessage, index = 0) {
-    this.running = true
-    while (this.running) {
-      let available = this.claim(index)
-      if (!available) continue
-      while (available--) {
-        onMessage(this.location(index), index++)
-      }
-      this.publish(index)
-    }
-  }
-
   async run () {
     if (this.running) return
     this.thread = spawn(this.source, this.core, this.disruptor.buffer, [this.name])
