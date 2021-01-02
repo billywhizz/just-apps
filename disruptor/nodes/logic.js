@@ -22,11 +22,13 @@ function main () {
   let index = 0
   while (1) {
     let available = node.claim(index)
-    if (!available) continue
+    if (!available) {
+      just.sys.usleep(10)
+      continue
+    }
     while (available--) {
       const off = node.location(index)
       const type = dv.getUint16(off)
-      //if (type === 1) just.print(stringify(readOrder(off)))
       if (type === 1) readOrder(off)
       index++
     }

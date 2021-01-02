@@ -14,7 +14,10 @@ function main () {
   let index = 0
   while (1) {
     let available = node.claim(index)
-    if (!available) continue
+    if (!available) {
+      just.sys.usleep(10)
+      continue
+    }
     while (available--) {
       handleMessage(node.location(index), index++)
     }
