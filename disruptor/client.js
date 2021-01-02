@@ -1,7 +1,7 @@
 const { createClient } = require('./sock.js')
 const { dump } = require('@binary')
 
-const sock = createClient('./unix.socket')
+const sock = createClient('./unix.sock')
 const buf = new ArrayBuffer(65536)
 const u8 = new Uint8Array(buf)
 
