@@ -7,6 +7,8 @@ const { loop } = just.factory
 
 let index = 0
 const buffer = node.buffer
+const maxChunk = 64 * 1024
+const maxMessages = maxChunk / node.recordSize
 
 function onConnect (fd, event) {
   if (event & EPOLLERR || event & EPOLLHUP) {
@@ -19,26 +21,48 @@ function onConnect (fd, event) {
       net.close(fd)
       return
     }
-    const available = node.claim(index)
+    let available = node.claim(index)
     if (!available) return
-    const wanted = available * node.recordSize
-    const off = node.location(index)
-    if (wanted - off <= 0) return
-    const bytes = net.recv(fd, buffer, off, wanted - off)
-    if (bytes > 0) {
-      let messages = Math.floor(bytes / node.recordSize)
-      while (messages--) {
-        node.dv.setUint16(node.location(index), 1)
-        node.dv.setBigUint64(node.location(index) + 2, BigInt(index++))
+    available = Math.min(maxMessages, available)
+    const slot = index % node.bufferSize
+    const remaining = node.bufferSize - slot
+    if (remaining >= available) {
+      const bytes = net.recv(fd, buffer, slot * node.recordSize, available * node.recordSize)
+      if (bytes > 0) {
+        index += Math.floor(bytes / node.recordSize)
+        node.publish(index)
+        return
       }
-      node.publish(index)
-      return
+      if (bytes < 0) {
+        const errno = sys.errno()
+        if (errno === net.EAGAIN) return
+        just.error(`recv error: ${sys.strerror(errno)} (${errno})`)
+      }
+    } else {
+      let bytes = net.recv(fd, buffer, slot * node.recordSize, remaining * node.recordSize)
+      if (bytes > 0) {
+        index += Math.floor(bytes / node.recordSize)
+        node.publish(index)
+        return
+      }
+      if (bytes < 0) {
+        const errno = sys.errno()
+        if (errno === net.EAGAIN) return
+        just.error(`recv error: ${sys.strerror(errno)} (${errno})`)
+      }
+      bytes = net.recv(fd, buffer, 0, (available - remaining))
+      if (bytes > 0) {
+        index += Math.floor(bytes / node.recordSize)
+        node.publish(index)
+        return
+      }
+      if (bytes < 0) {
+        const errno = sys.errno()
+        if (errno === net.EAGAIN) return
+        just.error(`recv error: ${sys.strerror(errno)} (${errno})`)
+      }
     }
-    if (bytes < 0) {
-      const errno = sys.errno()
-      if (errno === net.EAGAIN) return
-      just.error(`recv error: ${sys.strerror(errno)} (${errno})`)
-    }
+    index += available
   })
   let flags = sys.fcntl(clientfd, sys.F_GETFL, 0)
   flags |= O_NONBLOCK

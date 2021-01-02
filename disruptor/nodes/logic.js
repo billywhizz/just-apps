@@ -2,6 +2,8 @@ const node = require('lib/disruptor.js').load()
 
 const { dv } = node
 
+const stringify = (o, sp = '  ') => JSON.stringify(o, (k, v) => (typeof v === 'bigint') ? v.toString() : v, sp)
+
 function readOrder (off) {
   const o = {}
   o.sid = dv.getBigUint64(off + 2)
@@ -24,6 +26,7 @@ function main () {
     while (available--) {
       const off = node.location(index)
       const type = dv.getUint16(off)
+      //if (type === 1) just.print(stringify(readOrder(off)))
       if (type === 1) readOrder(off)
       index++
     }

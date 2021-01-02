@@ -4,7 +4,7 @@ const { readFile } = require('fs')
 const disruptor = new Disruptor(16384)
 
 const producer = disruptor.add('listen', readFile('nodes/listen.js'))
-const consumer = disruptor.add('journal', readFile('nodes/logic.js'))
+const consumer = disruptor.add('journal', readFile('nodes/journal.js'))
 
 consumer.follow(producer)
 

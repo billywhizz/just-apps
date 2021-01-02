@@ -8,12 +8,11 @@ function produceMessage (off, id) {
 function main () {
   let index = 0
   while (1) {
-    let available = node.claim(index)
+    const available = node.claim(index)
     if (!available) continue
-    while (available--) {
-      produceMessage(node.location(index), index++)
-    }
+    produceMessage(node.location(index), index++)
     node.publish(index)
+    just.sys.sleep(1)
   }
 }
 
