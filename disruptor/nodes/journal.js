@@ -5,7 +5,7 @@ const buffer = node.buffer
 
 function main () {
   let index = 0
-  const fd = fs.open('/dev/null', fs.O_CREAT | fs.O_WRONLY | fs.O_APPEND, fs.S_IRUSR | fs.S_IWUSR)
+  const fd = fs.open('./journal.bin', fs.O_CREAT | fs.O_WRONLY | fs.O_APPEND, fs.S_IRUSR | fs.S_IWUSR)
   while (1) {
     const available = node.claim(index)
     if (!available) {

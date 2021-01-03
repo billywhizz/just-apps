@@ -200,6 +200,7 @@ const { thread } = just.library('thread')
 function spawn (source, core, shared, args = just.args) {
   const tid = thread.spawn(source, just.builtin('just.js'), ['', ...args], shared)
   thread.setAffinity(tid, core)
+  thread.setName(tid, args[0])
   return { tid, core, shared }
 }
 
@@ -228,6 +229,7 @@ class Node {
     this.bufferSize = disruptor.bufferSize
     this.recordSize = disruptor.recordSize
     this.buffer = disruptor.buffer
+    this.i32 = new Int32Array(this.buffer)
     this.index = 0
   }
 
