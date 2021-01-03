@@ -103,5 +103,6 @@ function listen (sockName = './unix.sock') {
 
 just.print('replaying from stdin')
 loadStdin()
+node.send({ loaded: true })
 just.print('done replaying')
 listen(just.args[2])

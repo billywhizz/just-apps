@@ -1,3 +1,9 @@
+const { send, socketpair, AF_UNIX, SOCK_STREAM, close, recv } = just.net
+const { errno, strerror } = just.sys
+const { EPOLLERR, EPOLLHUP } = just.loop
+const { thread } = just.library('thread')
+const { loop } = just.factory
+
 const IdleModes = {
   SPIN: 0,
   SLEEP: 1
@@ -71,6 +77,7 @@ function readString (u8, len, off) {
 
 function load (name = just.args[1]) {
   if (!just.buffer) throw new Error('load is only available from a Node thread')
+  const fd = just.fd
   const shared = just.buffer
   const dv = new DataView(shared)
   const u8 = new Uint8Array(shared)
@@ -110,7 +117,52 @@ function load (name = just.args[1]) {
     }
     off += 64
   }
-  return disruptor.find(name)
+  const node = disruptor.find(name)
+  loop.add(fd, (fd, event) => {
+    if (event & EPOLLERR || event & EPOLLHUP) {
+      close(fd)
+      return
+    }
+    const buf = new ArrayBuffer(16384)
+    const bytes = recv(fd, buf)
+    if (bytes > 0 && node.onMessage) node.onMessage(JSON.parse(buf.readString(bytes)))
+  })
+  node.send = o => send(fd, ArrayBuffer.fromString(JSON.stringify(o)))
+  return node
+}
+
+function spawn (source, core, shared, args = just.args) {
+  const ipc = createPipe()
+  const tid = thread.spawn(source, just.builtin('just.js'), ['', ...args], shared, ipc[1])
+  thread.setAffinity(tid, core)
+  thread.setName(tid, args[0])
+  const t = { tid, core, shared }
+  t.send = o => send(ipc[0], ArrayBuffer.fromString(JSON.stringify(o)))
+  t.onMessage = () => {}
+  loop.add(ipc[0], (fd, event) => {
+    if (event & EPOLLERR || event & EPOLLHUP) {
+      close(fd)
+      return
+    }
+    const buf = new ArrayBuffer(16384)
+    const bytes = recv(fd, buf)
+    if (bytes > 0) t.onMessage(JSON.parse(buf.readString(bytes)))
+  })
+  return t
+}
+
+function nextCore () {
+  if (currentCore === cpus) {
+    currentCore = 0
+  }
+  return currentCore++
+}
+
+function createPipe () {
+  const fds = []
+  const r = socketpair(AF_UNIX, SOCK_STREAM, fds)
+  if (r !== 0) throw new Error(`socketpair ${r} errno ${errno()} : ${strerror(errno())}`)
+  return fds
 }
 
 class Disruptor {
@@ -195,25 +247,6 @@ class Disruptor {
   }
 }
 
-const { thread } = just.library('thread')
-
-function spawn (source, core, shared, args = just.args) {
-  const tid = thread.spawn(source, just.builtin('just.js'), ['', ...args], shared)
-  thread.setAffinity(tid, core)
-  thread.setName(tid, args[0])
-  return { tid, core, shared }
-}
-
-let currentCore = 1
-const cpus = just.sys.cpus
-
-function nextCore () {
-  if (currentCore === cpus) {
-    currentCore = 0
-  }
-  return currentCore++
-}
-
 class Node {
   constructor (name, disruptor, source = '', core = nextCore()) {
     this.disruptor = disruptor
@@ -267,7 +300,12 @@ class Node {
 
   async run () {
     if (this.running) return
+    const node = this
     this.thread = spawn(this.source, this.core, this.disruptor.buffer, [this.name])
+    this.send = o => this.thread.send(o)
+    this.thread.onMessage = (...args) => {
+      if (node.onMessage) node.onMessage(...args)
+    }
     this.running = true
     for (const follower of this.followers) {
       await follower.run()
@@ -277,5 +315,8 @@ class Node {
     }
   }
 }
+
+let currentCore = 1
+const cpus = just.sys.cpus
 
 module.exports = { Disruptor, Node, IdleModes, save, load }
