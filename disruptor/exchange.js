@@ -1,14 +1,13 @@
 const { Disruptor } = require('lib/disruptor.js')
-const { readFile } = require('fs')
 
 const disruptor = new Disruptor(16384)
 
-const pipeStream = disruptor.add('listen', readFile('nodes/pipeStream.js'))
-const validate = disruptor.add('validate', readFile('nodes/validate.js'))
-const journal = disruptor.add('journal', readFile('nodes/journal.js'))
-const replica = disruptor.add('replica', readFile('nodes/replica.js'))
-const logic = disruptor.add('logic', readFile('nodes/logic.js'))
-const publish = disruptor.add('publish', readFile('nodes/publish.js'))
+const pipeStream = disruptor.add('pipeStream')
+const validate = disruptor.add('validate')
+const journal = disruptor.add('journal')
+const replica = disruptor.add('replica')
+const logic = disruptor.add('logic')
+const publish = disruptor.add('publish')
 
 validate.follow(pipeStream)
 journal.follow(validate)
@@ -17,7 +16,6 @@ logic.follow(journal, replica)
 
 publish.follow(logic)
 
-disruptor.save()
 disruptor.run()
 
 let last

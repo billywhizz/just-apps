@@ -1,21 +1,21 @@
+const { sys } = just
+const { loop } = just.factory
+const { runMicroTasks } = sys
+
 const node = require('lib/disruptor.js').load()
 
-const { loop } = just.factory
-
 node.onMessage = (message) => {
-  just.print(`${node.name}: ${JSON.stringify(message)}`)
-  message.ping++
-  node.send(message)
+  just.print(`${node.name}\n${JSON.stringify(message)}`)
 }
 
-function main () {
-  let index = 0
+let index = 0
+
+function run () {
   while (1) {
     const available = node.claim(index)
     if (!available) {
-      just.sys.usleep(10)
       loop.poll(0)
-      just.sys.runMicroTasks()
+      runMicroTasks()
       continue
     }
     index += available
@@ -23,4 +23,4 @@ function main () {
   }
 }
 
-main()
+run()

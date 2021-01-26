@@ -18,3 +18,8 @@ threads/threads
 trig
 wasm/wasm
 wasm/parse.wasm
+.vscode
+nn
+raft
+*.o
+*.so

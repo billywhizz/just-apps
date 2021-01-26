@@ -1,3 +1,4 @@
+const mem = just.memoryUsage().rss
 function library (name, lib = name) {
   return just.load(name)
 }
@@ -54,8 +55,8 @@ function dumpModules () {
   dump(net, 'net')
   const { pg } = library('pg')
   dump(pg, 'pg')
-  const { rocksdb } = library('rocksdb')
-  dump(rocksdb, 'rocksdb')
+  //const { rocksdb } = library('rocksdb')
+  //dump(rocksdb, 'rocksdb')
   const { sha1 } = library('sha1')
   dump(sha1, 'sha1')
   const { signal } = library('signal')
@@ -102,3 +103,5 @@ function dumpLibs () {
 dumpBuiltins()
 dumpModules()
 dumpLibs()
+const rss = just.memoryUsage().rss
+just.print(`${mem} ${rss} ${rss - mem}`)

@@ -3,6 +3,7 @@ const { errno, strerror } = just.sys
 const { EPOLLERR, EPOLLHUP } = just.loop
 const { thread } = just.library('thread')
 const { loop } = just.factory
+const { readFile } = require('fs')
 
 const IdleModes = {
   SPIN: 0,
@@ -176,7 +177,7 @@ class Disruptor {
     this.dv = new DataView(this.buffer)
   }
 
-  add (name, source = '') {
+  add (name, source = readFile(`nodes/${name}.js`)) {
     const node = new Node(name, this, source)
     this.nodes.push(node)
     return node
@@ -186,10 +187,12 @@ class Disruptor {
     return this.bufferSize - (index - this.tortoise())
   }
 
-  async run () {
+  run () {
     if (just.buffer) throw new Error('run should only be called from the main thread')
+    this.save()
     const tail = this.tail()
-    await tail.run()
+    tail.run()
+    return this
   }
 
   counters () {
@@ -262,7 +265,6 @@ class Node {
     this.bufferSize = disruptor.bufferSize
     this.recordSize = disruptor.recordSize
     this.buffer = disruptor.buffer
-    this.i32 = new Int32Array(this.buffer)
     this.index = 0
   }
 
@@ -271,6 +273,7 @@ class Node {
     for (const producer of producers) {
       producer.followers.push(this)
     }
+    return this
   }
 
   claim (index) {
@@ -298,7 +301,7 @@ class Node {
     return (index % this.bufferSize) * this.recordSize
   }
 
-  async run () {
+  run () {
     if (this.running) return
     const node = this
     this.thread = spawn(this.source, this.core, this.disruptor.buffer, [this.name])
@@ -308,10 +311,10 @@ class Node {
     }
     this.running = true
     for (const follower of this.followers) {
-      await follower.run()
+      follower.run()
     }
     for (const leader of this.leaders) {
-      await leader.run()
+      leader.run()
     }
   }
 }
@@ -319,4 +322,8 @@ class Node {
 let currentCore = 1
 const cpus = just.sys.cpus
 
-module.exports = { Disruptor, Node, IdleModes, save, load }
+function create (bufferSize = 1024, recordSize = 64, idleMode = IdleModes.SPIN, buffer) {
+  return new Disruptor(bufferSize, recordSize, idleMode, buffer)
+}
+
+module.exports = { Disruptor, Node, IdleModes, save, load, create }

@@ -1,28 +1,46 @@
+const { fs, net, sys, factory } = just
+const { O_CREAT, O_WRONLY, O_APPEND, S_IRUSR, S_IWUSR, open } = fs
+const { write } = net
+const { runMicroTasks } = sys
+const { loop } = factory
+
 const node = require('lib/disruptor.js').load()
-const { fs, net } = just
 
-const buffer = node.buffer
+node.onMessage = (message) => {
+  if (message.action === 'pause') {
+    running = false
+    return
+  }
+  if (message.action === 'resume') {
+    running = true
+    run()
+  }
+}
 
-function main () {
-  let index = 0
-  const fd = fs.open('./journal.bin', fs.O_CREAT | fs.O_WRONLY | fs.O_APPEND, fs.S_IRUSR | fs.S_IWUSR)
-  while (1) {
+const { buffer, recordSize, bufferSize } = node
+const fd = open('/dev/null', O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR)
+let index = 0
+let running = true
+
+function run () {
+  while (running) {
     const available = node.claim(index)
     if (!available) {
-      just.sys.usleep(10)
+      loop.poll(0)
+      runMicroTasks()
       continue
     }
-    const slot = index % node.bufferSize
-    const remaining = node.bufferSize - slot
+    const slot = index % bufferSize
+    const remaining = bufferSize - slot
     if (remaining >= available) {
-      net.write(fd, buffer, available * node.recordSize, slot * node.recordSize)
+      write(fd, buffer, available * recordSize, slot * recordSize)
     } else {
-      net.write(fd, buffer, remaining * node.recordSize, slot * node.recordSize)
-      net.write(fd, buffer, (available - remaining) * node.recordSize, 0)
+      write(fd, buffer, remaining * recordSize, slot * recordSize)
+      write(fd, buffer, (available - remaining) * recordSize, 0)
     }
     index += available
     node.publish(index)
   }
 }
 
-main()
+run()
