@@ -11,8 +11,8 @@ async function main (dest = 'initramfs') {
     just.fs.mkdir('dev')
     just.fs.mkdir('proc')
     // make tty and console devices
-    fs.mknod('dev/tty', 'c', 'rwr-r-', 5, 0)
-    fs.mknod('dev/console', 'c', 'rwr-r-', 5, 1)
+    fs.makeNode('dev/tty', 'c', 'rwr-r-', 5, 0)
+    fs.makeNode('dev/console', 'c', 'rwr-r-', 5, 1)
     just.fs.chdir('../')
   }
   just.fs.chdir('./app')

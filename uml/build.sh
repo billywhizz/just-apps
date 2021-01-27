@@ -9,5 +9,5 @@
 #sudo setcap cap_net_raw,cap_net_admin+ep linux
 #sudo setcap CAP_MKNOD=ep linux
 cat linux-5.6.9/.config | grep -v "#" | sort | uniq > linux.config
-just build build.js --clean --static
+just build build.js --clean --static --cleanall
 sudo setcap CAP_MKNOD=ep build
