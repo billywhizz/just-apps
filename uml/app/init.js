@@ -118,8 +118,10 @@ function childMain () {
 }
 
 just.pid = sys.pid()
-if (just.pid === 1) fs.mount('proc', '/proc', 'proc', 0n, '')
-//if (just.pid === 1) fs.mount('none', '/sys', 'sysfs', 0n, '')
+if (just.pid === 1) {
+  fs.mount('proc', '/proc', 'proc', 0n, '')
+  fs.mount('none', '/sys', 'sysfs', 0n, '')
+}
 const ignore = new Array(32)
 const MAXSIG = 31
 const TIOCNOTTY = 0x5422
@@ -139,4 +141,3 @@ if (sys.ioctl(sys.STDIN_FILENO, TIOCNOTTY) !== -1) {
 const child = sys.fork()
 if (child < 0) sys.exit(1)
 child === 0 ? childMain() : parentMain()
-just.print('foo')
