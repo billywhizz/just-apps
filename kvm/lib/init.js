@@ -14,6 +14,15 @@ const { vm } = just.library('vm')
 const { epoll } = just.library('epoll')
 const { net } = just.library('net')
 
+const signals = Object.keys(signal)
+  .filter(k => k.match(/^SIG[A-Z].+/))
+  .reduce((s, k) => (s[signal[k]] = k) && s, {})
+
+const AG = '\u001b[32m'
+const AY = '\u001b[33m'
+const AR = '\u001b[31m'
+const AD = '\u001b[0m'
+
 just.signal = signal
 just.sys = sys
 just.fs = fs
@@ -52,6 +61,7 @@ function readFile (path, flags = fs.O_RDONLY) {
 }
 
 function onSignal (signum) {
+  just.print(`${AG}signal${AD} ${signals[signum]} (${signum}) received`)
   if (ignore[signum]) {
     ignore[signum] = 0
     return
@@ -91,10 +101,12 @@ function parentMain () {
 }
 
 function shutdown (signum) {
+  just.print(`${AY}signal${AD} ${signals[signum]} (${signum}) received`)
   if (signum === signal.SIGWINCH) return
-  just.error(`shutting down ${signum}`)
+  //just.error(`shutting down ${signum}`)
   if (just.pid === 1) {
-    just.sys.reboot()
+    //just.sys.reboot()
+    just.exit(0)
   } else {
     just.exit(1, signum)
   }
@@ -109,7 +121,7 @@ function childMain () {
   if (r !== 0) just.print(`TIOCSCTTY ${r}`)
   signal.reset()
   for (let i = 1; i < 32; i++) signal.sigaction(i, shutdown)
-  vm.runScript(just.builtin('app.js') || readFile('app.js'), 'app.js')
+  vm.runScript(just.builtin('app.js') || readFile('/sbin/app.js'), 'app.js')
   if (just.pid === 1) {
     just.sys.reboot()
   } else {

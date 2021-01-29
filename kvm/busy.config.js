@@ -18,5 +18,6 @@ const v8flags = [
   '--initial-heap-size=48'
 ]
 const v8flagsFromCommandLine = false
+const embeds = ['lib/init.js', 'busy.js']
 
-module.exports = { main: 'init.js', v8flagsFromCommandLine, v8flags: v8flags.join(' ') }
+module.exports = { main: 'jsh.js', embeds, v8flagsFromCommandLine, v8flags: v8flags.join(' ') }
