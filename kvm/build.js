@@ -1,65 +1,70 @@
-const { launch, watch } = require('process')
+const { fs } = just.library('fs')
+const { net } = just.library('net')
+const { sys } = just.library('sys')
 
-const fs = require('fs')
+const build = require('build')
+const config = require('configure')
+const process = require('process')
+const { join } = require('path')
+const { copyFile, makeNode, isDir, isFile } = require('fs')
+const { mount, unmount } = require('lib/losetup.js')
 
-async function main (dest = 'initramfs') {
-// dd if=/dev/zero bs=65536 count=480 of=rootfs
-// mkfs.ext2 -F rootfs
-/*
-busybox: https://github.com/mirror/busybox/archive/1_32_1.tar.gz
+const { mkdir, symlink, chdir } = fs
+const { launch, watch } = process
+const { SystemError } = just
+const { cwd } = sys
 
-- download linux
-- configure linux - config file
-- build linux
-
-- download busybox
-- configure busybox
-- build busybox
-
-- create rootfs file
-- make ext fs in file
-- mount file
-- make bin, dev, proc, sbin, sys
-- add bin/busybox
-- create console, mem, tty, null, ram, zero devices
-- build just
-- copy just to bin/just
-- symlink sbin/init to bin/just
-
-*/
-  if (!fs.isDir(dest)) {
-    // create the directory
-    just.fs.mkdir(dest)
-    just.fs.chdir(dest)
-    // make dev and proc
-    just.fs.mkdir('dev')
-    just.fs.mkdir('proc')
-    // make tty and console devices
-    fs.makeNode('dev/tty', 'c', 'rwr-r-', 5, 0)
-    fs.makeNode('dev/console', 'c', 'rwr-r-', 5, 1)
-    just.fs.chdir('../')
+function dd (path = 'rootfs', size = 64) {
+  const fd = fs.open('path', fs.O_WRONLY)
+  const chunks = (size * 1024) / 4
+  const buf = new ArrayBuffer(4096)
+  for (let i = 0; i < chunks; i++) {
+    net.write(fd, buf)
   }
-  just.fs.chdir('./app')
-  const buildModule = just.require('build')
-  if (!buildModule) throw new Error('Build not Available')
-  const config = just.require('configure').configure('init.js', { clean: true, static: true })
-  await buildModule.run(config, { clean: true, static: true })
-  just.print('build complete')
-  just.fs.chdir('../')
-  just.fs.rename('app/init', `${dest}/init`)
-  //fs.writeFile(`${dest}/app.js`, fs.readFileBytes('app/app.js'))
-/*
-  let p, status
-  p = launch('make', ['-j', '4', '-C', 'linux-5.6.9', 'ARCH=um'])
-  status = await watch(p)
-  just.print(`make ${status}`)
-  just.fs.rename('linux-5.6.9/linux', 'linux')
-  p = launch('sudo', ['setcap', 'cap_sys_admin,cap_mknod,cap_net_raw,cap_net_admin=ep', 'linux'])
-  status = await watch(p)
-  just.print(`setcap ${status}`)
-*/
+  net.close(fd)
 }
 
-// 'man capabilities' for a list of things we can enable/disable
+async function main (src = 'busy.js', file = 'rootfs', dest = 'mnt', size = 64, fstype = 'ext2') {
+  size = parseInt(size, 10)
+  let r = 0
+  if (!isFile(file)) {
+    // create the empty file
+    dd(file, size)
+    // create an ext2 filesystem
+    const status = await watch(launch('mke2fs', ['-t', fstype, '-F', file]))
+    just.print(`mkfs.ext2 ${status}`)
+  }
+  // create a temp directory to mount into
+  if (!isDir(dest)) {
+    r = mkdir(dest)
+    if (r !== 0) throw new SystemError(`mkdir ${dest}`)
+  }
+  // attach the file to a loop device
+  r = mount(30, file)
+  if (r !== 0) throw new SystemError(`mount ${file}`)
+  // mount the loop device into the temp directory
+  r = fs.mount('/dev/loop30', join(cwd(), dest), 'ext2', 0n, '')
+  // create the directories
+  mkdir(`${dest}/dev`)
+  mkdir(`${dest}/bin`)
+  mkdir(`${dest}/sbin`)
+  mkdir(`${dest}/proc`)
+  mkdir(`${dest}/sys`)
+  // copy busybox
+  copyFile('assets/busybox', `${dest}/bin/busybox`)
+  // make the minimum set of devices
+  makeNode(`${dest}/dev/tty`, 'c', 'rwr-r-', 5, 0)
+  makeNode(`${dest}/dev/console`, 'c', 'rwr-r-', 5, 1)
+  // build the application
+  const opts = { clean: true, static: true }
+  await build.run(config.configure(src, opts), opts)
+  const app = src.slice(0, src.lastIndexOf('.'))
+  // copy the app into the bin directory
+  copyFile('busy', `${dest}/bin/${app}`)
+  // symlink /sbin/init to /bin/${app}
+  chdir(`${dest}/sbin`)
+  symlink(`../bin/${app}`, 'init')
+  chdir('../../')
+}
 
-main(...just.args.slice(1)).catch(err => just.error(err.stack))
+main(...just.args.slice(2)).catch(err => just.error(err.stack))
