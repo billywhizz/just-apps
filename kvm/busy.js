@@ -229,49 +229,14 @@ function setNonBlocking (fd) {
   return just.fs.fcntl(fd, just.sys.F_SETFL, flags)
 }
 
-function parseArgs (args) {
-  const opts = {}
-  args = args.filter(arg => {
-    if (arg === '--bare') {
-      opts.bare = true
-      return false
-    }
-    if (arg === '--clean') {
-      opts.clean = true
-      return false
-    }
-    if (arg === '--cleanall') {
-      opts.cleanall = true
-      return false
-    }
-    if (arg === '--silent') {
-      opts.silent = true
-      return false
-    }
-    if (arg === '--inspector') {
-      opts.inspector = true
-      return false
-    }
-    if (arg === '--dump') {
-      opts.dump = true
-      return false
-    }
-    if (arg === '--static') {
-      opts.static = true
-      return false
-    }
-    return true
-  })
-  opts.args = args
-  return opts
-}
-
 function loadBuiltins () {
-  just.vm = just.library('vm').vm
-  just.loop = just.library('epoll').epoll
-  just.fs = just.library('fs').fs
-  just.net = just.library('net').net
-  just.sys = just.library('sys').sys
+  const { vm } = just.library('vm')
+  const { epoll } = just.library('epoll')
+  const { fs } = just.library('fs')
+  const { net } = just.library('net')
+  const { sys } = just.library('sys')
+  const { signal } = just.library('signal')
+  Object.assign(just, { vm, loop: epoll, fs, net, sys, signal })
 }
 
 function extendArrayBuffer () {
@@ -300,11 +265,11 @@ function startup () {
     return
   }
   if (just.args.length === 1) {
-    const replModule = require('repl')
-    if (!replModule) {
-      throw new Error('REPL not enabled. Maybe I should be a standalone?')
+    const shell = require('lib/shell.js')
+    if (!shell) {
+      throw new Error('shell not enabled')
     }
-    replModule.repl()
+    shell.start()
     return
   }
   if (just.args[1] === '--') {
@@ -322,51 +287,11 @@ function startup () {
     just.vm.runScript(just.args[2], 'eval')
     return
   }
-  if (just.args[1] === 'build') {
-    const buildModule = require('build')
-    if (!buildModule) throw new Error('Build not Available')
-    let config
-    if (just.args.length > 2 && just.args[2].indexOf('.js') > -1) {
-      config = require('configure').configure(just.args[2], opts)
-    } else {
-      config = require(just.args[2] || 'config.json') || require('config.js') || {}
-    }
-    buildModule.run(config, opts)
-      .catch(err => just.error(err.stack))
-    return
-  }
-  if (just.args[1] === 'init') {
-    const buildModule = require('build')
-    if (!buildModule) throw new Error('Build not Available')
-    buildModule.init(just.args[2] || 'hello')
-    return
-  }
-  if (just.args[1] === 'clean') {
-    const buildModule = require('build')
-    if (!buildModule) throw new Error('Build not Available')
-    buildModule.clean()
-    return
-  }
   const scriptName = just.path.join(just.sys.cwd(), just.args[1])
   just.vm.runScript(just.fs.readFile(just.args[1]), scriptName)
 }
 
-function startInspector () {
-  const inspectorLib = just.library('inspector')
-  if (!inspectorLib) throw new SystemError('inspector module is not enabled')
-  just.inspector = inspectorLib.inspector
-  Object.assign(just.inspector, require('inspector'))
-  just.encode = just.library('encode').encode
-  just.sha1 = just.library('sha1').sha1
-  global.inspector = just.inspector.createInspector({
-    title: 'Just!',
-    onReady: startup
-  })
-  just.inspector.enable()
-  just.factory.run()
-}
-
-function main (opts) {
+function main () {
   delete global.console
 
   const { library, cache } = wrapLibrary()
@@ -376,13 +301,6 @@ function main (opts) {
   const { requireNative, require } = wrapRequire(cache)
   extendArrayBuffer()
 
-  Object.assign(just.fs, require('fs'))
-  just.config = require('config')
-  just.path = require('path')
-  just.factory = require('loop').factory
-  just.factory.loop = just.factory.create(1024)
-  just.process = require('process')
-
   just.setTimeout = setTimeout
   just.setInterval = setInterval
   just.clearTimeout = just.clearInterval = clearTimeout
@@ -391,6 +309,13 @@ function main (opts) {
   just.sys.setNonBlocking = setNonBlocking
   just.require = global.require = require
   just.require.cache = cache
+  just.requireNative = requireNative
+
+  just.path = require('path')
+  const { factory } = require('loop')
+  just.factory = factory
+  just.factory.loop = just.factory.create(1024)
+  just.process = require('process')
 
   just.memoryUsage = wrapMemoryUsage(just.memoryUsage)
   just.cpuUsage = wrapCpuUsage(just.sys.cpuUsage)
@@ -398,20 +323,15 @@ function main (opts) {
   just.heapUsage = wrapHeapUsage(just.sys.heapUsage)
   just.hrtime = wrapHrtime(just.sys.hrtime)
 
-  if (opts.inspector) {
-    startInspector()
-    return
+  Object.assign(just.fs, require('fs'))
+  if (just.pid() === 1) {
+    const { init } = require('lib/init.js')
+    init()
+    just.factory.run()
+  } else {
+    startup()
   }
-
-  startup()
   if (just.args.length) just.factory.run()
 }
 
-const opts = parseArgs(just.args)
-just.args = opts.args
-just.opts = opts
-if (opts.bare) {
-  just.load('vm').vm.runScript(just.args[1], 'eval')
-} else {
-  main(opts)
-}
+main()
