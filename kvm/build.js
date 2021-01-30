@@ -7,15 +7,15 @@ const config = require('configure')
 const process = require('process')
 const { join } = require('path')
 const { copyFile, makeNode, isDir, isFile } = require('fs')
-const { mount, unmount } = require('lib/losetup.js')
+const { attach, detach } = require('lib/losetup.js')
 
-const { mkdir, symlink, chdir } = fs
+const { mkdir, symlink, chdir, rename } = fs
 const { launch, watch } = process
 const { SystemError } = just
 const { cwd } = sys
 
 function dd (path = 'rootfs', size = 64) {
-  const fd = fs.open('path', fs.O_WRONLY)
+  const fd = fs.open(path, fs.O_WRONLY | fs.O_CREAT)
   const chunks = (size * 1024) / 4
   const buf = new ArrayBuffer(4096)
   for (let i = 0; i < chunks; i++) {
@@ -24,7 +24,15 @@ function dd (path = 'rootfs', size = 64) {
   net.close(fd)
 }
 
-async function main (src = 'busy.js', file = 'rootfs', dest = 'mnt', size = 64, fstype = 'ext2') {
+const stat = new BigUint64Array(20)
+
+function getModified (fd) {
+  const r = fs.fstat(fd, stat)
+  if (r < 0) throw new SystemError('stat')
+  return Number(stat[14]) * 1000
+}
+
+async function main (src = 'busy.js', file = './rootfs', size = 64, fstype = 'ext2', dest = '.mnt') {
   size = parseInt(size, 10)
   let r = 0
   if (!isFile(file)) {
@@ -40,31 +48,40 @@ async function main (src = 'busy.js', file = 'rootfs', dest = 'mnt', size = 64, 
     if (r !== 0) throw new SystemError(`mkdir ${dest}`)
   }
   // attach the file to a loop device
-  r = mount(30, file)
-  if (r !== 0) throw new SystemError(`mount ${file}`)
+  const dev = attach(file)
+  if (dev < 0) throw new SystemError(`attach ${file}`)
   // mount the loop device into the temp directory
-  r = fs.mount('/dev/loop30', join(cwd(), dest), 'ext2', 0n, '')
+  r = fs.mount(`/dev/loop${dev}`, join(cwd(), dest), 'ext2', 0n, '')
+  if (r < 0) throw new SystemError(`mount ${file}`)
   // create the directories
-  mkdir(`${dest}/dev`)
-  mkdir(`${dest}/bin`)
-  mkdir(`${dest}/sbin`)
-  mkdir(`${dest}/proc`)
-  mkdir(`${dest}/sys`)
+  r = mkdir(`${dest}/dev`)
+  r = mkdir(`${dest}/bin`)
+  r = mkdir(`${dest}/sbin`)
+  r = mkdir(`${dest}/proc`)
+  r = mkdir(`${dest}/sys`)
   // copy busybox
   copyFile('assets/busybox', `${dest}/bin/busybox`)
   // make the minimum set of devices
-  makeNode(`${dest}/dev/tty`, 'c', 'rwr-r-', 5, 0)
-  makeNode(`${dest}/dev/console`, 'c', 'rwr-r-', 5, 1)
+  r = makeNode(`${dest}/dev/tty`, 'c', 'rwr-r-', 5, 0)
+  r = makeNode(`${dest}/dev/console`, 'c', 'rwr-r-', 5, 1)
   // build the application
   const opts = { clean: true, static: true }
   await build.run(config.configure(src, opts), opts)
   const app = src.slice(0, src.lastIndexOf('.'))
   // copy the app into the bin directory
-  copyFile('busy', `${dest}/bin/${app}`)
+  r = copyFile(app, `${dest}/bin/${app}`)
   // symlink /sbin/init to /bin/${app}
-  chdir(`${dest}/sbin`)
-  symlink(`../bin/${app}`, 'init')
-  chdir('../../')
+  r = chdir(`${dest}/sbin`)
+  r = symlink(`../bin/${app}`, 'init')
+  r = chdir('../../')
+  // unmount the temp directory
+  r = fs.umount(dest)
+  // detach the loop device
+  r = detach(dev)
+  // remove the temp directory
+  r = fs.rmdir(dest)
+  // remove the binary
+  r = fs.unlink(app)
 }
 
 main(...just.args.slice(2)).catch(err => just.error(err.stack))
