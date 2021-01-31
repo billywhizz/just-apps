@@ -1,2 +1,6 @@
 #!/bin/bash
-sudo assets/lkvm run -c 1 -m 64 -d rootfs -k assets/bzImage
+NAME=${1:-busy}
+ROOTFS=${2:-rootfs}
+MEM=${3:-64}
+CPU=${4:-1}
+sudo assets/lkvm run --debug --name $NAME --balloon -c $CPU -m $MEM -d $ROOTFS -k assets/bzImage

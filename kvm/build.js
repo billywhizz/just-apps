@@ -71,6 +71,8 @@ async function main (src = 'busy.js', file = './rootfs', size = 64, fstype = 'ex
     // make the minimum set of devices
     r = makeNode(`${dest}/dev/tty`, 'c', 'rwr-r-', 5, 0)
     r = makeNode(`${dest}/dev/console`, 'c', 'rwr-r-', 5, 1)
+    r = makeNode(`${dest}/dev/null`, 'c', 'rwrwrw', 1, 3)
+    r = makeNode(`${dest}/dev/zero`, 'c', 'rwrwrw', 1, 5)
     // copy the app into the bin directory
     r = copyFile(`assets/${app}`, `${dest}/bin/${app}`)
     // symlink /sbin/init to /bin/${app}
