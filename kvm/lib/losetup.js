@@ -6,7 +6,7 @@ const { makeNode } = require('fs')
 const { error } = just
 const { close } = net
 const { open, unlink, O_RDWR } = fs
-const { ioctl } = sys
+const { ioctl, errno } = sys
 
 const O_CLOEXEC = 524288 // TODO: use sys.O_CLOEXEC
 
@@ -19,22 +19,29 @@ const LOOP_SET_FD = 0x4C00
 const LOOP_CLR_FD = 0x4C01
 const LOOP_SET_STATUS64 = 0x4C04
 const LOOP_CTL_GET_FREE = 0x4C82
+const LO_NAME_SIZE = 64
 
 class LoopInfo extends DataView {
   constructor () {
-    const buffer = new ArrayBuffer(128)
+    const buffer = new ArrayBuffer(280)
     super(buffer)
+  }
+
+  set name (val) {
+    just.sys.writeString(this.buffer, val.slice(0, LO_NAME_SIZE), 72)
+  }
+
+  get name () {
+    return just.sys.readString(this.buffer, LO_NAME_SIZE, 72)
   }
 }
 
 function getFreeDevice () {
   const fd = open('/dev/loop-control', O_RDWR | O_CLOEXEC)
   if (fd < 0) throw new SystemError('open /dev/loop-control')
-  just.print(fd)
   const devno = ioctl(fd, LOOP_CTL_GET_FREE, 0)
   if (devno < 0) throw new SystemError('ioctl /dev/loop-control')
   close(fd)
-  just.print(devno)
   return devno
 }
 
@@ -71,12 +78,13 @@ function attach (target, id = getFreeDevice()) {
     source = open(target, O_RDWR | O_CLOEXEC)
     if (source < 0) throw new SystemError('source.open')
     r = makeNode(deviceName, 'b', 'rwrw--', 7, id)
-    if (r < 0) throw new SystemError('makeNode')
+    if (r < 0 && errno() !== fs.EEXIST) throw new SystemError('makeNode')
     device = open(deviceName, O_RDWR | O_CLOEXEC)
     if (device < 0) throw new SystemError('device.open')
     r = ioctl(device, LOOP_SET_FD, source)
     if (r < 0) throw new SystemError('device.ioctl (LOOP_SET_FD)')
     close(source)
+    loopInfo.name = target
     r = ioctl(device, LOOP_SET_STATUS64, loopInfo.buffer)
     if (r < 0) throw new SystemError('device.ioctl (LOOP_SET_STATUS64)')
   } catch (err) {

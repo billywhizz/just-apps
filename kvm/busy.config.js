@@ -20,4 +20,4 @@ const v8flags = [
 const v8flagsFromCommandLine = false
 const embeds = []
 
-module.exports = { main: 'busy.js', embeds, v8flagsFromCommandLine, v8flags: v8flags.join(' ') }
+module.exports = { assets: ['assets/busybox', 'assets/bzImage', 'assets/busy'], main: 'busy.js', embeds, v8flagsFromCommandLine, v8flags: v8flags.join(' ') }

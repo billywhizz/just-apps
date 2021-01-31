@@ -5,3 +5,5 @@ assets/linux
 assets/bzImage
 assets/lkvm
 rootfs
+build
+assets/busy
