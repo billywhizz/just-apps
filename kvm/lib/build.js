@@ -15,6 +15,7 @@ function getStats (fd) {
 }
 
 function getFile (fn, justDir) {
+  // TODO: return empty struct if file not found
   let fd = fs.open(fn)
   if (fd <= 0) {
     if (!justDir) throw new SystemError('open')
@@ -54,11 +55,14 @@ function getFiles (cfg) {
     if (fd <= 0) {
       file = join(justDir, file)
       fd = fs.open(file)
-      if (fd <= 0) throw new SystemError('open')
     }
-    const { modified, size } = getStats(fd)
-    net.close(fd)
-    result.push({ name: file, modified: new Date(modified), size })
+    if (fd > 0) {
+      const stats = getStats(fd)
+      result.push({ name: file, modified: new Date(stats.modified), size: stats.size })
+      net.close(fd)
+    } else {
+      result.push({ name: file, modified: new Date(0), size: 0 })
+    }
   }
   return result
 }

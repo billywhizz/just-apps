@@ -37,7 +37,7 @@ async function main (src = 'busy.js', file = './rootfs', size = 64, fstype = 'ex
   size = parseInt(size, 10)
   let r = 0
   opts.dump = false
-  // if any of the files for the app have changed or the binary does not exist, rebuild id
+  // if any of the files for the app have changed or the binary does not exist, rebuild it
   if (!isFile(`assets/${app}`) || getFile(`assets/${app}`).modified < lastFile.modified) {
     // build the application
     await build.run(configure.run(src, opts), opts)
