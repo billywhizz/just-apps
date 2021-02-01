@@ -22,32 +22,37 @@ function dd (path = 'rootfs', size = 64) {
   net.close(fd)
 }
 
+function sortByModified (a, b) {
+  if (a.modified < b.modified) return 1
+  if (a.modified > b.modified) return -1
+  return 0
+}
+
 async function main (src = 'busy.js', file = './rootfs', size = 64, fstype = 'ext2', dest = '.mnt') {
-  const opts = { clean: true, static: true, dump: true }
+  const opts = { clean: true, static: true, dump: true, silent: true }
   const cfg = await build.run(configure.run(src, opts), opts)
   const files = getFiles(cfg)
-  const lastFile = files.map(f => f.modified).sort()[files.length - 1]
+  const lastFile = files.sort(sortByModified)[0]
   const app = src.slice(0, src.lastIndexOf('.'))
   size = parseInt(size, 10)
   let r = 0
   opts.dump = false
   // if any of the files for the app have changed or the binary does not exist, rebuild id
-  if (!isFile(`assets/${app}`) || getFile(`assets/${app}`).modified < lastFile) {
+  if (!isFile(`assets/${app}`) || getFile(`assets/${app}`).modified < lastFile.modified) {
     // build the application
     await build.run(configure.run(src, opts), opts)
     r = copyFile(app, `assets/${app}`)
     r = fs.unlink(app)
-    just.print('app built successfully')
   }
   const assets = cfg.assets.map(fn => getFile(fn, cfg.justDir))
-  const lastAsset = assets.map(f => f.modified).sort()[assets.length - 1]
-  if (!isFile(file) || getFile(file).modified < lastAsset) {
+  const lastAsset = assets.sort(sortByModified)[0]
+  if (!isFile(file) || getFile(file).modified < lastAsset.modified) {
     if (!isFile(file)) {
       // create the empty file
       dd(file, size)
       // create an ext2 filesystem
       const status = await watch(launch('mke2fs', ['-t', fstype, '-F', file]))
-      just.print(`mkfs.ext2 ${status}`)
+      if (status !== 0) throw new SystemError('mke2fs')
     }
     // create a temp directory to mount into
     if (!isDir(dest)) {
@@ -85,9 +90,6 @@ async function main (src = 'busy.js', file = './rootfs', size = 64, fstype = 'ex
     r = detach(dev)
     // remove the temp directory
     r = fs.rmdir(dest)
-    just.print('image built successfully')
-  } else {
-    just.print('nothing to be done')
   }
 }
 

@@ -63,11 +63,8 @@ function start (mode = 'js') {
   function handleInternal (str) {
     const [program, ...args] = str.split(' ')
     if (program === 'exit') {
-      if (signal) {
-        kill(pid(), signal.SIGTERM)
-      } else {
-        just.exit(0)
-      }
+      //kill(pid(), signal.SIGTERM)
+      just.exit(0)
       return true
     }
     if (program === 'mode') {
@@ -96,11 +93,8 @@ function start (mode = 'js') {
   }
 
   let r = fcntl(STDIN_FILENO, F_SETFL, (fcntl(STDIN_FILENO, F_GETFL, 0) | O_NONBLOCK))
-  if (signal) {
-    signal.sigaction(signal.SIGCHLD, signum => {})
-    signal.sigaction(signal.SIGTERM, signum => just.exit(1, signum))
-  }
-  prompt()
+  signal.sigaction(signal.SIGCHLD, signum => {})
+  signal.sigaction(signal.SIGTERM, signum => just.exit(1, signum))
   r = loop.add(STDIN_FILENO, (fd, event) => {
     let bytes = read(fd, buf)
     while (bytes > 0) {
@@ -119,6 +113,7 @@ function start (mode = 'js') {
     }
   })
   if (r < 0) throw new SystemError('loop.add')
+  prompt()
 }
 
 module.exports = { start }

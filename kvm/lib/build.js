@@ -24,7 +24,7 @@ function getFile (fn, justDir) {
   }
   const { modified, size } = getStats(fd)
   net.close(fd)
-  return { name: fn, modified, size }
+  return { name: fn, modified: new Date(modified), size }
 }
 
 function getFiles (cfg) {
@@ -58,7 +58,7 @@ function getFiles (cfg) {
     }
     const { modified, size } = getStats(fd)
     net.close(fd)
-    result.push({ name: file, modified, size })
+    result.push({ name: file, modified: new Date(modified), size })
   }
   return result
 }

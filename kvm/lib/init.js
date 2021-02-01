@@ -2,20 +2,12 @@ const { signal } = just.library('signal')
 const { sys } = just.library('sys')
 const { fs } = just.library('fs')
 
-const AG = '\u001b[32m'
-const AY = '\u001b[33m'
-const AD = '\u001b[0m'
 const ignore = new Array(32)
 const MAXSIG = 31
 const TIOCNOTTY = 0x5422
 const TIOCSCTTY = 0x540E
 const sigmask = new ArrayBuffer(128)
-const signals = Object.keys(signal)
-  .filter(k => k.match(/^SIG[A-Z].+/))
-  .reduce((s, k) => (s[signal[k]] = k) && s, {})
-
 function shutdown (signum) {
-  just.print(`${AY}signal${AD} ${signals[signum]} (${signum}) received in child`)
   if (signum === signal.SIGWINCH) return
   if (just.pid === 1) {
     just.exit(0)
@@ -26,7 +18,6 @@ function shutdown (signum) {
 
 function init () {
   function onSignal (signum) {
-    just.print(`${AG}signal${AD} ${signals[signum]} (${signum}) received in parent`)
     if (ignore[signum]) {
       ignore[signum] = 0
       return
@@ -42,6 +33,8 @@ function init () {
           exitStatus = 128 + (status & 0x7f) // WTERMSIG
         }
         if (kpid === child) {
+          // negative pid kills all child processes which are members
+          // of the process group of this pid
           sys.kill(-child, signal.SIGTERM)
           sys.exit(exitStatus)
         }
@@ -94,7 +87,7 @@ function init () {
     signal.sigaction(i, onSignal)
   }
   signal.sigaction(signal.SIGPIPE)
-  while (1) just.sleep(1)
+  while (1) sys.usleep(100)
 }
 
 module.exports = { init }
