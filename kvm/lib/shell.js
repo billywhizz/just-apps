@@ -3,20 +3,25 @@ const { sys } = just.library('sys')
 const { vm } = just.library('vm')
 const { signal } = just.library('signal')
 
+const process = require('process')
+
+// https://www.linusakesson.net/programming/tty/
+
 const { F_SETFL, F_GETFL, STDIN_FILENO, STDOUT_FILENO } = sys
 const { O_NONBLOCK, EAGAIN } = net
 
 const { print, error, SystemError } = just
 const { read, write, close } = net
-const { readString, fork, waitpid, exec, usleep, kill, calloc, setenv, fcntl, errno, pid } = sys
+const { readString, fork, waitpid, exec, usleep, calloc, setenv, fcntl, errno } = sys
 const { runScript } = vm
-
 const { loop } = just.factory
 
 const AG = '\u001b[32m'
 const AY = '\u001b[33m'
 const AR = '\u001b[31m'
 const AD = '\u001b[0m'
+
+const programs = new Set()
 
 function stringify (o, sp = '  ') {
   return JSON.stringify(o, (k, v) => {
@@ -27,7 +32,12 @@ function stringify (o, sp = '  ') {
 function launch (program, ...args) {
   const child = fork()
   if (child === 0) {
-    const r = exec('busybox', [program, ...args])
+    let r = 0
+    if (programs.has(program)) {
+      r = exec('busybox', [program, ...args])
+    } else {
+      r = exec(program, args)
+    }
     throw new SystemError(`exec ${r}`)
   } else if (child < 0) {
     throw new SystemError(`fork ${child}`)
@@ -41,9 +51,7 @@ function launch (program, ...args) {
   }
 }
 
-function start (mode = 'js') {
-  const buf = new ArrayBuffer(4096)
-
+async function start (mode = 'js') {
   function command (str) {
     try {
       if (!handleInternal(str)) {
@@ -63,7 +71,6 @@ function start (mode = 'js') {
   function handleInternal (str) {
     const [program, ...args] = str.split(' ')
     if (program === 'exit') {
-      //kill(pid(), signal.SIGTERM)
       just.exit(0)
       return true
     }
@@ -92,28 +99,41 @@ function start (mode = 'js') {
     write(STDOUT_FILENO, calloc(1, `${color}>${AD} `))
   }
 
-  let r = fcntl(STDIN_FILENO, F_SETFL, (fcntl(STDIN_FILENO, F_GETFL, 0) | O_NONBLOCK))
-  signal.sigaction(signal.SIGCHLD, signum => {})
-  signal.sigaction(signal.SIGTERM, signum => just.exit(1, signum))
-  r = loop.add(STDIN_FILENO, (fd, event) => {
-    let bytes = read(fd, buf)
-    while (bytes > 0) {
-      prompt(command(readString(buf, bytes).trim()))
-      bytes = read(fd, buf)
-    }
-    if (bytes === 0) {
-      just.error('closing stdin')
-      close(fd)
-    }
-    if (bytes < 0) {
-      if (errno() !== EAGAIN) {
-        just.error((new SystemError(`read ${fd}`)).message)
+  try {
+    const buf = new ArrayBuffer(4096)
+    let r = fcntl(STDIN_FILENO, F_SETFL, (fcntl(STDIN_FILENO, F_GETFL, 0) | O_NONBLOCK))
+    signal.sigaction(signal.SIGCHLD, signum => {})
+    signal.sigaction(signal.SIGTERM, signum => just.exit(1, signum))
+    r = loop.add(STDIN_FILENO, (fd, event) => {
+      let bytes = read(fd, buf)
+      while (bytes > 0) {
+        prompt(command(readString(buf, bytes).trim()))
+        bytes = read(fd, buf)
+      }
+      if (bytes === 0) {
+        just.error('closing stdin')
         close(fd)
       }
+      if (bytes < 0) {
+        if (errno() !== EAGAIN) {
+          just.error((new SystemError(`read ${fd}`)).message)
+          close(fd)
+        }
+      }
+    })
+    if (r < 0) throw new SystemError('loop.add')
+    const bb = process.launch('busybox', ['--list'])
+    const chunks = []
+    bb.onStdout = (buf, len) => chunks.push(buf.readString(len))
+    const status = await process.watch(bb)
+    if (status === 0) {
+      chunks.join('').split('\n').forEach(p => programs.add(p.trim()))
     }
-  })
-  if (r < 0) throw new SystemError('loop.add')
-  prompt()
+    prompt()
+  } catch (err) {
+    just.error(err.stack)
+    sys.exit(1)
+  }
 }
 
 module.exports = { start }

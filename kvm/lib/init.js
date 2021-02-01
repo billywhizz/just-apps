@@ -87,7 +87,12 @@ function init () {
     signal.sigaction(i, onSignal)
   }
   signal.sigaction(signal.SIGPIPE)
-  while (1) sys.usleep(100)
+  const status = new Uint32Array(2)
+  sys.waitpid(status, child)
+  while (status[0] === 0) {
+    sys.usleep(10000)
+    sys.waitpid(status, child)
+  }
 }
 
 module.exports = { init }
