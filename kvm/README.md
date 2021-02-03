@@ -2,6 +2,10 @@
 // mkfs.ext2 -F rootfs
 /*
 
+firecracker
+https://github.com/firecracker-microvm/firecracker/archive/v0.22.4.tar.gz
+https://s3.amazonaws.com/spec.ccfc.min/img/x86_64/minimal_with_atkbd/kernel/vmlinux.bin
+
 busybox
 https://codeload.github.com/mirror/busybox/tar.gz/1_32_1
 
@@ -9,8 +13,14 @@ kvmtool
 https://codeload.github.com/kvmtool/kvmtool/tar.gz/master
 
 linux
-https://mirrors.edge.kernel.org/pub/linux/kernel/v5.x/linux-5.10.11.tar.gz
+#https://mirrors.edge.kernel.org/pub/linux/kernel/v5.x/linux-5.10.11.tar.gz
+https://mirrors.edge.kernel.org/pub/linux/kernel/v4.x/linux-4.14.72.tar.gz
 
+kernel parameters
+https://www.kernel.org/doc/html/v4.15/admin-guide/kernel-parameters.html
+
+TODO: patch to kvmtool for vmlinux from elf
+https://kvm.vger.kernel.narkive.com/2mTKrQHt/can-kvm-tool-load-vmlinux
 
 - download linux
 - configure linux - config file

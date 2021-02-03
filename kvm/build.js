@@ -63,7 +63,7 @@ async function main (src = 'busy.js', file = './rootfs', size = 64, fstype = 'ex
     const dev = attach(file)
     if (dev < 0) throw new SystemError(`attach ${file}`)
     // mount the loop device into the temp directory
-    r = fs.mount(`/dev/loop${dev}`, dest, 'ext2', 0n, '')
+    r = fs.mount(`/dev/loop${dev}`, dest, fstype, 0n, '')
     if (r < 0) throw new SystemError(`mount ${file}`)
     // create the directories
     r = mkdir(`${dest}/dev`)
@@ -93,4 +93,8 @@ async function main (src = 'busy.js', file = './rootfs', size = 64, fstype = 'ex
   }
 }
 
-main(...just.args.slice(2)).catch(err => just.error(err.stack))
+if (just.args[0] === 'just') {
+  main(...just.args.slice(2)).catch(err => just.error(err.stack))
+} else {
+  main(...just.args.slice(1)).catch(err => just.error(err.stack))
+}

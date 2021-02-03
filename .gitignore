@@ -24,7 +24,6 @@ raft
 *.o
 *.so
 linux-5.6.9
-uml/linux
-uml/app/init
-uml/initramfs2
-uml/initramfs/init
+kvm/assets/firecracker
+kvm/assets/vmlinux
+kvm/assets/vmlinux.bin
