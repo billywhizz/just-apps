@@ -1,7 +1,7 @@
 {
   "boot-source": {
     "kernel_image_path": "assets/vmlinux",
-    "boot_args": "ro selinux=0 console=ttyS0 noapic pci=off nomodules random.trust_cpu=on quiet audit=0 panic=-1"
+    "boot_args": "ro selinux=0 console=ttyS0 noapic pci=off nomodules random.trust_cpu=on quiet audit=0 panic=-1 zswap.enabled=0"
   },
   "drives": [
     {

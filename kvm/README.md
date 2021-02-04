@@ -22,6 +22,13 @@ https://www.kernel.org/doc/html/v4.15/admin-guide/kernel-parameters.html
 TODO: patch to kvmtool for vmlinux from elf
 https://kvm.vger.kernel.narkive.com/2mTKrQHt/can-kvm-tool-load-vmlinux
 
+
+Alow user to control kvm
+```
+sudo setfacl -m u:$USER:rw /dev/kvm
+sudo setcap cap_net_bind_service=+ep /usr/bin/socat
+```
+
 - download linux
 - configure linux - config file
 - build linux
