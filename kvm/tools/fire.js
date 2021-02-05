@@ -1,4 +1,4 @@
-const { createClient, createServer } = require('unix.js')
+const { createClient } = require('unix.js')
 const { createParser, HTTP_RESPONSE } = require('@http')
 
 function connect (sockName) {
@@ -84,7 +84,5 @@ function connect (sockName) {
     client.connect()
   })
 }
-
-function 
 
 module.exports = { connect }
