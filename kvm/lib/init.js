@@ -51,7 +51,7 @@ function init () {
   just.pid = sys.pid()
   if (just.pid === 1) {
     fs.mount('proc', '/proc', 'proc', 0n, '')
-    //fs.mount('none', '/sys', 'sysfs', 0n, '')
+    fs.mount('none', '/sys', 'sysfs', 0n, '')
   }
   signal.SIGTTIN = 21
   signal.SIGTTOU = 22

@@ -1,4 +1,4 @@
-const { createClient } = require('unix.js')
+const { createClient, createServer } = require('unix.js')
 const { createParser, HTTP_RESPONSE } = require('@http')
 
 function connect (sockName) {
@@ -28,13 +28,13 @@ function connect (sockName) {
             }
           } else {
             just.print(`remaining ${buf.remaining} contentLength ${response.contentLength}`)
+            // todo, buffer the body? emit it in chunks?
           }
         }
         requests.shift().callback(response)
       }
       sock.onData = bytes => parser.parse(bytes)
       sock.onClose = () => parser.free()
-      just.sys.nextTick(() => resolve(sock))
       sock.get = (url, headers = {}) => {
         return new Promise(resolve => {
           requests.push({ url, headers, callback: resolve })
@@ -76,6 +76,7 @@ function connect (sockName) {
           if (len) sock.writeString(text)
         })
       }
+      just.sys.nextTick(() => resolve(sock))
       return parser.buffer
     }
     const client = createClient(sockName)
@@ -83,5 +84,7 @@ function connect (sockName) {
     client.connect()
   })
 }
+
+function 
 
 module.exports = { connect }

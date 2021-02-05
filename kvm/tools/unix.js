@@ -1,4 +1,3 @@
-
 const { sys, net } = just
 const { EPOLLIN, EPOLLERR, EPOLLHUP, EPOLLOUT } = just.loop
 const { O_NONBLOCK, SOMAXCONN, SOCK_STREAM, SOL_SOCKET, AF_UNIX, SOCK_NONBLOCK, SO_ERROR } = net
@@ -32,6 +31,10 @@ function createServer (path) {
         return
       }
       const { offset } = buffer
+      // TODO: it would be better if we raised a readable even and the client 
+      // did the reading and handled any errors. otherwise the error becomes 
+      // disassociated from the read and has to be sent in an anonymous 
+      // onClose/onError callback
       const bytes = net.recv(fd, buffer, offset, byteLength - offset)
       if (bytes > 0) {
         socket.onData(bytes)

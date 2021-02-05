@@ -75,3 +75,6 @@ https://github.com/cloudflare/sandbox
 
 patchelf
 https://github.com/NixOS/patchelf
+
+sandboxing and workload isolation
+https://fly.io/blog/sandboxing-and-workload-isolation/
