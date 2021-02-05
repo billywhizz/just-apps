@@ -1,4 +1,4 @@
-const { createClient } = require('unix.js')
+const { createClient } = require('@unix')
 const { createParser, HTTP_RESPONSE } = require('@http')
 
 function connect (sockName) {
@@ -33,49 +33,37 @@ function connect (sockName) {
         }
         requests.shift().callback(response)
       }
-      sock.onData = bytes => parser.parse(bytes)
+      sock.onData = bytes => {
+        if (bytes > 0) parser.parse(bytes)
+      }
       sock.onClose = () => parser.free()
-      sock.get = (url, headers = {}) => {
-        return new Promise(resolve => {
-          requests.push({ url, headers, callback: resolve })
-          const keys = Object.keys(headers)
-          let strHeaders = ''
-          if (keys.length) {
-            strHeaders = Object.keys(headers).map(k => `${k}: ${headers[k]}`).join('\r\n')
-          }
-          sock.writeString(`GET ${url} HTTP/1.1\r\n${strHeaders}\r\n`)
-        })
+      function writeHeaders (verb, headers, url) {
+        const keys = Object.keys(headers)
+        let strHeaders = ''
+        if (keys.length) {
+          strHeaders = Object.keys(headers).map(k => `${k}: ${headers[k]}`).join('\r\n')
+        }
+        sock.writeString(`${verb.toUpperCase()} ${url} HTTP/1.1\r\n${strHeaders}\r\n\r\n`)
       }
-      sock.put = (url, json, headers = { 'Content-Type': 'application/json' }) => {
+      function send (verb, url, json, headers = { 'Content-Type': 'application/json' }) {
         return new Promise(resolve => {
           requests.push({ url, headers, callback: resolve })
           const text = JSON.stringify(json)
           const len = just.sys.utf8Length(text)
           headers['Content-Length'] = len
-          const keys = Object.keys(headers)
-          let strHeaders = ''
-          if (keys.length) {
-            strHeaders = Object.keys(headers).map(k => `${k}: ${headers[k]}`).join('\r\n')
-          }
-          sock.writeString(`PUT ${url} HTTP/1.1\r\n${strHeaders}\r\n\r\n`)
+          writeHeaders(verb, headers, url)
           if (len) sock.writeString(text)
         })
       }
-      sock.patch = (url, json, headers = { 'Content-Type': 'application/json' }) => {
+      sock.get = (url, headers = { Accept: 'application/json' }) => {
         return new Promise(resolve => {
           requests.push({ url, headers, callback: resolve })
-          const text = JSON.stringify(json)
-          const len = just.sys.utf8Length(text)
-          headers['Content-Length'] = len
-          const keys = Object.keys(headers)
-          let strHeaders = ''
-          if (keys.length) {
-            strHeaders = Object.keys(headers).map(k => `${k}: ${headers[k]}`).join('\r\n')
-          }
-          sock.writeString(`PATCH ${url} HTTP/1.1\r\n${strHeaders}\r\n\r\n`)
-          if (len) sock.writeString(text)
+          writeHeaders('get', headers, url)
         })
       }
+      sock.put = (...args) => send('put', ...args)
+      sock.patch = (...args) => send('patch', ...args)
+      sock.post = (...args) => send('post', ...args)
       just.sys.nextTick(() => resolve(sock))
       return parser.buffer
     }

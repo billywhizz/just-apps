@@ -74,8 +74,8 @@ async function main () {
       if (res.statusCode !== 204) throw new Error('Could not create balloon')
     }
     // add the metrics endpoint
-    res = await fire.put('/metrics', { metrics_path: join(cwd(), 'metrics.sock') })
-    if (res.statusCode !== 204) throw new Error('Could not add metrics endpoint')
+    //res = await fire.put('/metrics', { metrics_path: join(cwd(), 'metrics.sock') })
+    //if (res.statusCode !== 204) throw new Error('Could not add metrics endpoint')
     // start the vm
     res = await fire.put('/actions', { action_type: 'InstanceStart' })
     if (res.statusCode !== 204) throw new Error('Could not start micro vm')
@@ -95,10 +95,11 @@ async function main () {
       res = await fire.patch('/vm', { state: 'Resumed' })
       if (res.statusCode !== 204) throw new Error('Could not resume vm')
     }
+    waitpid(new Uint32Array(2), child)
     timer = just.setInterval(async () => {
       // flush metrics
-      res = await fire.put('/actions', { action_type: 'FlushMetrics' })
-      if (res.statusCode !== 204) throw new Error('Could not flush metrics')
+      //res = await fire.put('/actions', { action_type: 'FlushMetrics' })
+      //if (res.statusCode !== 204) throw new Error('Could not flush metrics')
       // check for firecracker process exiting
       const [, pid] = waitpid(new Uint32Array(2))
       if (pid === child) shutdown()
