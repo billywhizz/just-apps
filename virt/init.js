@@ -1,6 +1,7 @@
 const { signal } = just.library('signal')
 const { sys } = just.library('sys')
 const { fs } = just.library('fs')
+const { vm } = just.library('vm')
 
 const ignore = new Array(32)
 const MAXSIG = 31
@@ -51,7 +52,7 @@ function init () {
   just.pid = sys.pid()
   if (just.pid === 1) {
     fs.mount('proc', '/proc', 'proc', 0n, '')
-    //fs.mount('none', '/sys', 'sysfs', 0n, '')
+    fs.mount('none', '/sys', 'sysfs', 0n, '')
   }
   signal.SIGTTIN = 21
   signal.SIGTTOU = 22
@@ -75,8 +76,7 @@ function init () {
     signal.reset()
     for (let i = 1; i < 32; i++) signal.sigaction(i, shutdown)
     signal.sigaction(signal.SIGPIPE)
-    const shell = require('shell.js')
-    shell.start()
+    vm.runScript(just.builtin('app.js'), 'app.js')
     just.factory.run()
     return
   }
@@ -87,12 +87,17 @@ function init () {
     signal.sigaction(i, onSignal)
   }
   signal.sigaction(signal.SIGPIPE)
-  const status = new Uint32Array(2)
-  sys.waitpid(status, child)
-  while (status[0] === 0) {
-    sys.usleep(10000)
-    sys.waitpid(status, child)
-  }
+  just.setInterval(() => {}, 1000)
+  //const status = new Uint32Array(2)
+  //sys.waitpid(status, child)
+  //while (status[0] === 0) {
+  //  sys.usleep(10000)
+  //  sys.waitpid(status, child)
+  //}
 }
 
-module.exports = { init }
+if (just.sys.pid() === 1) {
+  init()
+} else {
+  vm.runScript(just.builtin('app.js') || just.fs.readFile('app.js'), 'app.js')
+}

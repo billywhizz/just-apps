@@ -83,11 +83,12 @@ async function main () {
       // pause the vm
       res = await fire.patch('/vm', { state: 'Paused' })
       if (res.statusCode !== 204) throw new Error('Could not pause vm')
+      const now = Date.now()
       // create the snapshot
       res = await fire.put('/snapshot/create', {
         snapshot_type: 'Full',
-        snapshot_path: './snapshot_file',
-        mem_file_path: './mem_file',
+        snapshot_path: `./snapshot_file.${now}`,
+        mem_file_path: `./mem_file.${now}`,
         version: '0.23.0'
       })
       if (res.statusCode !== 204) throw new Error('Could not create snapshot')

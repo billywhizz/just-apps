@@ -6,4 +6,4 @@ assets/bzImage
 assets/lkvm
 rootfs
 build
-assets/busy
+busy

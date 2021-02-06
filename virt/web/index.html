@@ -1,0 +1,121 @@
+<!doctype html>
+<title>just (shell)</title>
+<style>
+html {
+  background: #555;
+}
+div#terminalContainer {
+  float: left;
+  padding: 8px;
+  background: #333;
+}
+div#terminalHeader h2 {
+  color: #bb9826;
+  font-family: monospace;
+  font-size: 14pt;
+}
+</style>
+<link href="term.min.css" rel="stylesheet"></link>
+<meta http-equiv="origin-trial" content="AsCrtlCc2hmboFf8sA1IlvQCIKLQB2gEhqwkiikAYLYNwLKZ5oEN46v3C4/6rBFBtXVdD20iPy2caELq8CemjgQAAABSeyJvcmlnaW4iOiJodHRwOi8vMTI3LjAuMC4xOjgwIiwiZmVhdHVyZSI6Ik5hdGl2ZUZpbGVTeXN0ZW0yIiwiZXhwaXJ5IjoxNTk4MjM3NTQ4fQ==">
+<script type="text/javascript" src="term.min.js"></script>
+<script>
+let sock
+
+function stopvm () {
+  if(sock) sock.close()
+}
+
+function startvm () {
+  const entries = JSON.parse(localStorage.getItem('history') || '[]')
+  let current = ''
+  sock = new WebSocket(window.location.href.replace('http', 'ws'))
+  let term
+  let pos = entries.length
+  sock.onopen = () => {
+    term = new Terminal({
+      cols: 120,
+      rows: 40,
+      scrollback: 2000,
+      cursorBlink: true,
+      fontSize: 14,
+      theme: {
+        background: '#333'
+      }
+    })
+    term.open(document.getElementById('terminal'))
+    term.on('key', (key, ev) => {
+      if (ev.keyCode === 13) {
+        if (current.length) {
+          sock.send(`${current}\n`)
+          if (entries[entries.length - 1] !== current) {
+            entries.push(current)
+            localStorage.setItem('history', JSON.stringify(entries))
+          }
+          pos = entries.length
+        }
+        term.write('\r\n')
+      } else if (ev.keyCode === 8) {
+        if (current.length) {
+          current = current.slice(0, current.length - 1)
+          term.write('\b \b')
+        }
+      } else if (ev.keyCode === 38) {
+        if (pos > 0) {
+          while (current.length) {
+            current = current.slice(0, current.length - 1)
+            term.write('\b \b')
+          }
+          current = entries[--pos]
+          term.write(current)
+        }
+      } else if (ev.keyCode === 40) {
+        if (pos < entries.length - 1) {
+          while (current.length) {
+            current = current.slice(0, current.length - 1)
+            term.write('\b \b')
+          }
+          current = entries[++pos]
+          term.write(current)
+        }
+      } else {
+        if (ev.ctrlKey) {
+          if (ev.keyCode === 67) {
+            while (current.length) {
+              current = current.slice(0, current.length - 1)
+              term.write('\b \b')
+            }
+          }
+        } else {
+          current += key
+          term.write(key)
+        }
+      }
+    })
+    term.on('paste', data => {
+      current += data
+      term.write(data)
+    })
+  }
+  sock.onmessage = event => {
+    term.write(`${event.data.replace(/\n/g, '\r\n')}`)
+    current = ''
+  }
+  sock.onclose = () => {
+    term.destroy()
+  }
+  sock.onerror = err => {
+    console.error(err)
+  }
+  sock.onSecure = err => {
+    console.log('onSecure')
+  }
+}
+</script>
+<div id="terminalHeader">
+<h2>just...</h2>
+<button id ="start" onclick="startvm()">start</button>
+<button id ="stop" onclick="stopvm()">stop</button>
+</div>
+<div id="terminalContainer">
+  <div id="terminal"></div>
+</div>
