@@ -20,6 +20,8 @@ function onPacket (packet, u8) {
     just.print(udpDump(packet))
     if (bytes > offset) just.print(dump(u8.slice(offset, bytes)), false)
     just.print('')
+  } else {
+    just.print(JSON.stringify(packet))
   }
 }
 

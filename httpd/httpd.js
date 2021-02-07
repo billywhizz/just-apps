@@ -30,6 +30,12 @@ function createResponses () {
 createResponses()
 
 just.setInterval(() => {
-  just.print(Object.keys(connections).length)
+  const conn = Object.keys(connections).length
   createResponses()
+  const rss = just.memoryUsage().rss
+  const { user, system } = just.cpuUsage()
+  const total = (user + system)
+  const upc = total ? (user / total) : 0
+  const spc = total ? (system / total) : 0
+  just.print(`mem ${rss} cpu ${total} (${upc.toFixed(2)}/${spc.toFixed(2)}) conn ${conn}`)
 }, 1000)

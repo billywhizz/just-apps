@@ -52,25 +52,48 @@ async function main (file = 'rootfs', size = 64, fstype = 'ext2', dest = '.mnt')
   r = mkdir(`${dest}/sys`)
   r = mkdir(`${dest}/etc`)
   r = mkdir(`${dest}/etc/init.d`)
-  const fd = fs.open(`${dest}/etc/init.d/rcS`, O_WRONLY | O_CREAT)
+  // create the init script
+  let fd = fs.open(`${dest}/etc/init.d/rcS`, O_WRONLY | O_CREAT)
   net.writeString(fd, `#!/bin/sh
+# mount proc and sysfs
 mount -t proc none /proc
 mount -t sysfs none /sys
+# configure the network
+ip addr add 172.16.0.2/24 dev eth0
+ip link set eth0 up
+ip route add default via 172.16.0.1 dev eth0
 `)
   r = fs.chmod(fd, S_IRWXU | S_IRWXG | S_IROTH)
   r = net.close(fd)
+  // create dns config files
+  fd = fs.open(`${dest}/etc/resolv.conf`, O_WRONLY | O_CREAT)
+  net.writeString(fd, 'nameserver 8.8.8.8\n')
+  r = net.close(fd)
+  fd = fs.open(`${dest}/etc/nsswitch.conf`, O_WRONLY | O_CREAT)
+  net.writeString(fd, 'hosts:      files dns\n')
+  r = net.close(fd)
+  fd = fs.open(`${dest}/etc/hosts`, O_WRONLY | O_CREAT)
+  net.writeString(fd, '127.0.0.1       localhost\n')
+  r = net.close(fd)
   // make the minimum set of devices
-  r = makeNode(`${dest}/dev/tty`, 'c', 'rwr-r-', 5, 0)
-  r = makeNode(`${dest}/dev/console`, 'c', 'rwr-r-', 5, 1)
+  r = makeNode(`${dest}/dev/tty`, 'c', 'rwrwrw', 5, 0)
+  r = makeNode(`${dest}/dev/console`, 'c', 'rwrwrw', 5, 1)
   r = makeNode(`${dest}/dev/null`, 'c', 'rwrwrw', 1, 3)
   r = makeNode(`${dest}/dev/zero`, 'c', 'rwrwrw', 1, 5)
-  // copy the app into the bin directory
+  r = makeNode(`${dest}/dev/tty0`, 'c', 'rw-w--', 4, 0)
+  r = makeNode(`${dest}/dev/tty1`, 'c', 'rw-w--', 4, 1)
+  r = makeNode(`${dest}/dev/tty2`, 'c', 'rw-w--', 4, 2)
+  r = makeNode(`${dest}/dev/tty3`, 'c', 'rw-w--', 4, 3)
+  r = makeNode(`${dest}/dev/tty4`, 'c', 'rw-w--', 4, 4)
+  // copy the httpd app into the bin directory
+  r = copyFile('httpd', `${dest}/bin/httpd`)
+  // copy the busybox into the bin directory
   r = copyFile('busybox', `${dest}/bin/busybox`)
   // symlink /sbin/init to /bin/${app}
   r = chdir(`${dest}/sbin`)
   r = symlink('../bin/busybox', 'init')
   r = chdir('../../')
-
+  // add symlinks for all the busybox programs
   const programs = new Set()
   const bb = process.launch('./busybox', ['--list'])
   const chunks = []
