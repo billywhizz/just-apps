@@ -26,13 +26,14 @@ function onPacket (packet, u8) {
 }
 
 const { net, SystemError } = just
-const { SOCK_RAW, AF_PACKET, PF_PACKET, ETH_P_ALL } = net
+const { SOCK_RAW, AF_PACKET, PF_PACKET, ETH_P_ALL, SOL_SOCKET } = net
 const { dump, toMAC, htons16, tcpDump, udpDump } = binary
 
 function main (args) {
   const { buf, u8, parse } = new Parser()
   const iff = args[0]
   let i = 0
+  let r = 0
   const fd = net.socket(PF_PACKET, SOCK_RAW, htons16(ETH_P_ALL))
   if (fd < 0) throw new SystemError('socket')
   if (iff) {
