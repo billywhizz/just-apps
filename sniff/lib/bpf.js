@@ -1,5 +1,3 @@
-const { memory } = just.library('memory', '../../just-js/modules/memory/memory.so')
-
 function compileBPF (prog, littleEndian = true) {
   const len = prog.length
   const bpf = new ArrayBuffer(len * 8)
@@ -20,7 +18,7 @@ function compile (prog, littleEndian = true) {
   const buf = new ArrayBuffer(16)
   const dv = new DataView(buf)
   dv.setUint16(0, prog.length, littleEndian)
-  memory.writePointer(memory.rawBuffer(buf), 8, memory.rawBuffer(bpf))
+  dv.setBigUint64(8, bpf.getAddress(), true)
   buf.bpf = bpf
   return buf
 }
