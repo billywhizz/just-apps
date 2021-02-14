@@ -1,0 +1,84 @@
+<!doctype html>
+<head>
+<title>just (shell)</title>
+<style>
+html {
+  background: #555;
+}
+div#terminalContainer {
+  float: left;
+  padding: 8px;
+  background: #333;
+}
+div#terminalHeader h2 {
+  color: #bb9826;
+  font-family: monospace;
+  font-size: 14pt;
+}
+</style>
+<link href="term.min.css" rel="stylesheet"></link>
+<script type="text/javascript" src="term.min.js"></script>
+<script>
+let sock
+const ascii = { C: 67 }
+let term
+
+function control () {
+  if (sock) {
+    sock.close()
+    document.getElementById('control').innerText = 'start'
+  } else {
+    startvm()
+    document.getElementById('control').innerText = 'stop'
+  }
+}
+
+function startvm () {
+  sock = new WebSocket(window.location.href.replace('http', 'ws'))
+  sock.onopen = () => {
+    term = new Terminal({
+      cols: 80,
+      rows: 50,
+      theme: {
+        background: '#333'
+      }
+    })
+    term.open(document.getElementById('terminal'))
+    term.setOption('fontSize', 14)
+    term.setOption('fontFamily', 'monospace')
+    term.setOption('scrollback', 2000)
+    //term.setOption('cols', 80)
+    //term.setOption('rows', 120)
+    term.setOption('cursorBlink', true)
+    term.attachCustomKeyEventHandler(e => {
+      if (e.ctrlKey && e.shiftKey && e.keyCode === ascii.C) {
+        e.preventDefault()
+        document.execCommand('copy')
+        return false
+      }
+      return true
+    })
+    document.getElementById('terminalContainer').style.display = 'block'
+    term.focus()
+    term.on('data', data => sock.send(data))
+  }
+  sock.onmessage = event => term.write(event.data)
+  sock.onclose = () => {
+    term.destroy()
+    term = null
+    sock = null
+  }
+  sock.onerror = err => console.error(err)
+  sock.onSecure = err => console.log('onSecure')
+}
+</script>
+</head>
+<body>
+<div id="terminalHeader">
+<h2>just(js)</h2>
+<button id ="control" onclick="control()">start</button>
+</div>
+<div id="terminalContainer">
+  <div id="terminal"></div>
+</div>
+</body>

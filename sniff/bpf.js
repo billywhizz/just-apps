@@ -43,7 +43,7 @@ function main (args) {
   if (fd < 0) throw new SystemError('socket')
   const prog = [
     [OP_LDH, 0, 0, 12], // ldh [12]  - load half word (16bits) at byte offset 12 - ethernet frame type
-    [OP_JEQ, 0, 1, if_ether.ETH_P_IP], // jeq #0x800, L2, L4
+    [OP_JEQ, 1, 0, if_ether.ETH_P_IP], // jeq #0x800, L2, L4
     [OP_RET, 0, 0, -1], // ret #0xffffffff
     [OP_RET, 0, 0, 0] // ret #0x0
   ]

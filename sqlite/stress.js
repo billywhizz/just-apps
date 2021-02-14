@@ -4,7 +4,7 @@ const { open, close, version, prepare, step, finalize, reset } = sql
 const { clearBindings, bindInt } = sql
 
 just.print(`SQLite version ${version()}`)
-//just.fs.unlink('world.db')
+just.fs.unlink('world.db')
 const db = open('world.db')
 
 let { stmt } = prepare(db, `
@@ -47,20 +47,35 @@ bindInt(stmt, 1, 3)
 just.print(JSON.stringify(getRows(stmt, world)))
 reset(stmt)
 just.print(JSON.stringify(getRows(stmt, world)))
+finalize(stmt)
 
 function test () {
-  stmt = prepare(db, 'SELECT * FROM world where id = $id').stmt
-  bindInt(stmt, 1, 3)
+  const stmt = prepare(db, 'SELECT * FROM world where id = $id').stmt
+  bindInt(stmt, 1, 2)
   for (let i = 0; i < 1000; i++) {
-    const rows = getRows(stmt, world)
+    getRows(stmt, world)
     reset(stmt)
   }
+  finalize(stmt)
 }
 
-test()
-test()
-test()
-test()
-
+stmt = prepare(db, 'SELECT * FROM world where id = $id').stmt
+bindInt(stmt, 1, 2)
+getRows(stmt, world)
+reset(stmt)
 finalize(stmt)
+
+stmt = prepare(db, 'SELECT * FROM world where id = $id').stmt
+bindInt(stmt, 1, 2)
+for (let i = 0; i < 1000; i++) {
+  getRows(stmt, world)
+  reset(stmt)
+}
+finalize(stmt)
+
+//test()
+//test()
+//test()
+//test()
+
 close(db)

@@ -7,6 +7,8 @@ const { fork, exec, waitpid } = sys
 const { unlink } = fs
 const { connect } = require('lib/fire.js')
 
+const { loop } = just.factory
+
 function launch (program, ...args) {
   const child = fork()
   if (child === 0) {
@@ -29,15 +31,32 @@ function createInterface (name, cidr) {
   */
 }
 
+const flags = just.sys.getTerminalFlags(just.sys.STDIN_FILENO)
+const ICANON = 2
+const ECHO = 8
+
+function enableRawMode () {
+  const newflags = flags & ~(ECHO | ICANON)
+  just.sys.setTerminalFlags(just.sys.STDIN_FILENO, newflags)
+}
+
+function disableRawMode () {
+  just.sys.setTerminalFlags(just.sys.STDIN_FILENO, flags)
+}
+
 async function main () {
   function shutdown () {
     just.print('shutting down')
     if (timer) just.clearInterval(timer)
     if (fire && !fire.closing) fire.close()
+    disableRawMode()
     unlink(sockName)
+    if (!Object.keys(loop.handles).length) loop.count = 0
+    just.exit(0)
   }
   const sockName = 'busy.sock'
   unlink(sockName)
+  enableRawMode()
   const child = launch('firecracker', '--api-sock', sockName)
   let fire
   while (!fire) {
