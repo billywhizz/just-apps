@@ -24,7 +24,8 @@ function launch (program, ...args) {
 async function main () {
   const sockName = 'busy.sock'
   unlink(sockName)
-  const child = launch('assets/firecracker', '--api-sock', sockName)
+  const child = launch('assets/firecracker2', '--api-sock', sockName)
+  waitpid(new Uint32Array(2), child)
   let fire
   // connect to the socket
   while (!fire) {
@@ -67,7 +68,7 @@ async function main () {
     if (just.args[2] !== 'dump') {
       // add a memory baloon
       res = await fire.put('/balloon', {
-        amount_mb: 64,
+        amount_mib: 64,
         deflate_on_oom: true,
         stats_polling_interval_s: 0
       })

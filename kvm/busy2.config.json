@@ -1,4 +1,4 @@
-const config = {
+{
   "version": "0.1.1",
   "libs": [
     "lib/shell.js",
@@ -76,29 +76,3 @@ const config = {
   "build": "main-static",
   "moduleBuild": "module-static"
 }
-
-const v8flags = [
-  '--stack-trace-limit=10',
-  '--use-strict',
-  '--disallow-code-generation-from-strings',
-  '--single-threaded',
-  '--single-threaded-gc',
-  '--no-concurrent-inlining',
-  '--no-concurrent-recompilation',
-  '--no-turbo-jt',
-  '--jitless',
-  '--lite-mode',
-  '--optimize-for-size',
-  '--no-expose-wasm',
-  '--memory-reducer',
-  '--memory-reducer-for-small-heaps',
-  '--use-idle-notification',
-  '--max-heap-size=48',
-  '--initial-heap-size=48'
-]
-config.main = 'busy.js'
-config.v8flags = v8flags.join(' ')
-config.v8flagsFromCommandLine = false
-config.embeds = []
-config.assets = ['assets/busybox', 'assets/bzImage', 'assets/busy']
-module.exports = config

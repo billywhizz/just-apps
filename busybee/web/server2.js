@@ -54,9 +54,9 @@ function startWebSocket (request, program, cwd, args) {
       return
     }
     if (event && EPOLLIN) {
-      const bytes = net.read(fd, buf, 0, buf.byteLength)
+      const bytes = net.read(fd, buf)
       const msg = createBinaryMessage(buf, bytes)
-      net.send(request.fd, msg, msg.byteLength, 0)
+      net.send(request.fd, msg)
     }
   })
   const parser = new Parser()
@@ -93,7 +93,7 @@ function sendResponse (request, statusCode = 200, statusMessage = 'OK', body, hd
   headers.push('')
   const hstr = headers.join('\r\n')
   const buf = ArrayBuffer.fromString(hstr)
-  let bytes = net.send(fd, buf, buf.byteLength, 0)
+  let bytes = net.send(fd, buf)
   if (!len) return
   const chunks = Math.ceil(len / 4096)
   bytes = 0
@@ -108,6 +108,7 @@ function onSocketEvent (fd, event) {
   if (event & EPOLLERR || event & EPOLLHUP) return closeSocket(fd)
   if (event & EPOLLIN) {
     const bytes = net.recv(fd, rbuf, 0, rbuf.byteLength)
+    just.print(bytes)
     if (bytes < 0) {
       const errno = sys.errno()
       if (errno !== net.EAGAIN) {
@@ -121,15 +122,9 @@ function onSocketEvent (fd, event) {
     const answer = [0]
     const [remaining, count] = http.parseRequests(rbuf, rbuf.offset + bytes, 0, answer)
     if (count > 0) {
-      const reqs = [[]]
-      http.getRequests(count, reqs)
-      const requests = reqs.map(req => {
-        const [ path, version, methodLen, headers ] = req
-        return { path, version, method: methodLen, headers }
-      })
+      const requests = http.getRequests(count)
       for (const request of requests) {
         request.fd = fd
-        request.url = request.path
         if (request.method !== 'GET') {
           return sendResponse(request, 403, 'Forbidden')
         }

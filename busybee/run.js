@@ -22,12 +22,24 @@ function launch (program, ...args) {
 
 function createInterface (name, cidr) {
   /*
+  sudo iptables-save > iptables.rules.save
   sudo ip tuntap add tap0 mode tap
   sudo ip addr add 172.16.0.1/24 dev tap0
   sudo ip link set tap0 up
   sudo iptables -t nat -A POSTROUTING -o wlp1s0 -j MASQUERADE
   sudo iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
   sudo iptables -A FORWARD -i tap0 -o wlp1s0 -j ACCEPT
+  */
+}
+
+function destroyInterface (name, cidr) {
+  /*
+  sudo ip link del tap0
+  sudo iptables -F
+  sudo sh -c "echo 0 > /proc/sys/net/ipv4/ip_forward"
+  if [ -f iptables.rules.save ]; then
+      sudo iptables-restore < iptables.rules.save
+  fi
   */
 }
 
@@ -72,6 +84,7 @@ async function main () {
   fire.onClose = shutdown
   try {
     res = await fire.put('/drives/rootfs', config.drives[0])
+    just.print(JSON.stringify(res))
     if (res.statusCode !== 204) throw new Error('Could not add drive')
     res = await fire.put('/machine-config', config['machine-config'])
     if (res.statusCode !== 204) throw new Error('Could not machine config')

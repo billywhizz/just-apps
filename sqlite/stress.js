@@ -1,81 +1,68 @@
-const sql = require('lib/sqlite.js')
+const sqlite = require('lib/sqlite.js')
 const { getSchema, getRows } = require('lib/nice.js')
-const { open, close, version, prepare, step, finalize, reset } = sql
-const { clearBindings, bindInt } = sql
+const { open, close, version, prepare, step, finalize, reset } = sqlite
+const { clearBindings, bindInt } = sqlite
 
 just.print(`SQLite version ${version()}`)
 just.fs.unlink('world.db')
 const db = open('world.db')
 
-let { stmt } = prepare(db, `
-CREATE TABLE IF NOT EXISTS world (
-  id int NOT NULL PRIMARY KEY,
-  random int
-)`)
-step(stmt)
-finalize(stmt)
-const world = getSchema(db, 'world')
-
-stmt = prepare(db, 'CREATE INDEX IF NOT EXISTS [IFK_world_id] ON "world" ([id])').stmt
-step(stmt)
-finalize(stmt)
-
-stmt = prepare(db, 'DELETE FROM world').stmt
+let { stmt } = prepare(db, 'DROP TABLE IF EXISTS world')
 step(stmt)
 finalize(stmt)
 
 stmt = prepare(db, `
-INSERT INTO world 
-  (id, random)
-VALUES
-  (1, 0),
-  (2, 1),
-  (3, 2)
-`).stmt
+CREATE TABLE world (
+  id int NOT NULL PRIMARY KEY,
+  random int
+)`).stmt
 step(stmt)
 finalize(stmt)
 
-stmt = prepare(db, 'SELECT * FROM world').stmt
-just.print(JSON.stringify(getRows(stmt, world)))
-finalize(stmt)
-stmt = prepare(db, 'SELECT * FROM world where id = $id').stmt
-bindInt(stmt, 1, 2)
-just.print(JSON.stringify(getRows(stmt, world)))
-clearBindings(stmt)
-reset(stmt)
-bindInt(stmt, 1, 3)
-just.print(JSON.stringify(getRows(stmt, world)))
-reset(stmt)
-just.print(JSON.stringify(getRows(stmt, world)))
+const world = getSchema(db, 'world')
+
+stmt = prepare(db, 'CREATE INDEX [IFK_world_id] ON "world" ([id])').stmt
+step(stmt)
 finalize(stmt)
 
-function test () {
+const rows = []
+for (let i = 0; i < 1000; i++) rows.push(`(${i}, ${i})`)
+const sql = `
+INSERT INTO world 
+  (id, random)
+VALUES
+${rows.join(',\n')}
+`
+stmt = prepare(db, sql).stmt
+step(stmt)
+finalize(stmt)
+
+function test (n = 1000) {
   const stmt = prepare(db, 'SELECT * FROM world where id = $id').stmt
-  bindInt(stmt, 1, 2)
-  for (let i = 0; i < 1000; i++) {
+  const start = Date.now()
+  for (let i = 0; i < n; i++) {
+    bindInt(stmt, 1, Math.floor(Math.random() * 100))
     getRows(stmt, world)
     reset(stmt)
   }
+  const elapsed = Date.now() - start
+  const rate = n / (elapsed / 1000)
+  just.print(`n = ${n} time ${elapsed} rate ${rate}`)
+  clearBindings(stmt)
   finalize(stmt)
 }
 
-stmt = prepare(db, 'SELECT * FROM world where id = $id').stmt
-bindInt(stmt, 1, 2)
-getRows(stmt, world)
-reset(stmt)
-finalize(stmt)
-
-stmt = prepare(db, 'SELECT * FROM world where id = $id').stmt
-bindInt(stmt, 1, 2)
-for (let i = 0; i < 1000; i++) {
-  getRows(stmt, world)
-  reset(stmt)
-}
-finalize(stmt)
-
-//test()
-//test()
-//test()
-//test()
-
+test(2000)
+just.print(just.memoryUsage().rss)
 close(db)
+
+//stmt = prepare(db, 'SELECT id FROM world where id = $id').stmt
+
+/*
+db = open('world.db')
+test(100000)
+close(db)
+db = open('world.db')
+test(100000)
+close(db)
+*/

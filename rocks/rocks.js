@@ -34,7 +34,7 @@ const writeOptions = createWriteOptions()
 const readOptions = createReadOptions()
 while (1) {
   net.writeString(STDOUT_FILENO, getPrompt())
-  const bytes = net.read(STDIN_FILENO, buf)
+  const bytes = net.read(STDIN_FILENO, buf, 0, buf.byteLength)
   if (bytes === 0) break
   if (bytes < 0) {
     sleep(1)
@@ -45,8 +45,10 @@ while (1) {
   const [command, ...args] = parts
   if (command === 'get') {
     const key = args[0]
-    const val = get(db, readOptions, key).readString()
-    net.writeString(STDOUT_FILENO, `${AD}${val}`)
+    const len = get(db, readOptions, key, buf, 65536)
+    if (len > 0) {
+      net.writeString(STDOUT_FILENO, `${AD}${buf.readString(len)}`)
+    }
   } else if (command === 'delete') {
     const key = args[0]
     remove(db, writeOptions, key)

@@ -128,7 +128,7 @@ function wrapPrepare () {
   dv.setBigUint64(16, av.buffer.getAddress(), true)
   // prepFlags
   const bv = new DataView(new ArrayBuffer(4))
-  dv.setBigUint64(24, bv.buffer.getAddress(), true)
+  dv.setBigUint64(24, av.buffer.getAddress(), true)
   // **ppStmt
   const pv = new DataView(new ArrayBuffer(8))
   const fpv = new DataView(new ArrayBuffer(8))

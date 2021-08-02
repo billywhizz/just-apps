@@ -12,7 +12,7 @@ function connect (sockName) {
       const buf = new ArrayBuffer(4096)
       const parser = createParser(buf, HTTP_RESPONSE)
       parser.onResponses = count => {
-        const response = parser.get(1)[0]
+        const response = { statusCode: parser.status(0), headers: parser.headers(0) }
         response.contentLength = parseInt(response.headers['Content-Length'] || 0, 10)
         if (response.contentLength === 0) {
           response.chunked = (response.headers['Transfer-Encoding'] || '').toLowerCase() === 'chunked'

@@ -230,13 +230,12 @@ function setNonBlocking (fd) {
 }
 
 function loadBuiltins () {
-  const { vm } = just.library('vm')
-  const { epoll } = just.library('epoll')
-  const { fs } = just.library('fs')
-  const { net } = just.library('net')
-  const { sys } = just.library('sys')
-  const { signal } = just.library('signal')
-  Object.assign(just, { vm, loop: epoll, fs, net, sys, signal })
+  just.vm = just.library('vm').vm
+  just.loop = just.library('epoll').epoll
+  just.fs = just.library('fs').fs
+  just.net = just.library('net').net
+  just.sys = just.library('sys').sys
+  just.signal = just.library('signal').signal
 }
 
 function extendArrayBuffer () {
@@ -253,7 +252,7 @@ function extendArrayBuffer () {
     return just.sys.memcpy(this, ab, off, len, off2)
   }
   ArrayBuffer.fromString = str => just.sys.calloc(1, str)
-  String.byteLength = just.sys.utf8Length
+  String.byteLength = (...args) => just.sys.utf8Length(...args)
 }
 
 function startup () {
@@ -296,10 +295,10 @@ function main () {
 
   const { library, cache } = wrapLibrary()
   just.library = library
+  extendArrayBuffer()
   loadBuiltins()
   just.env = wrapEnv(just.sys.env)
   const { requireNative, require } = wrapRequire(cache)
-  extendArrayBuffer()
 
   just.setTimeout = setTimeout
   just.setInterval = setInterval

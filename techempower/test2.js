@@ -1,4 +1,4 @@
-const { Connection, pg } = require('pg.js')
+const { Connection, pg } = require('@pg')
 const { constants } = pg
 
 async function main () {

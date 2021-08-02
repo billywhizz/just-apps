@@ -18,7 +18,7 @@ function dd (path = 'rootfs', size = 64) {
   const chunks = (size * 1024) / 4
   const buf = new ArrayBuffer(4096)
   for (let i = 0; i < chunks; i++) {
-    net.write(fd, buf, buf.byteLength, 0)
+    net.write(fd, buf)
   }
   net.close(fd)
 }
@@ -31,8 +31,7 @@ function sortByModified (a, b) {
 
 async function main (src = 'busy.js', file = './rootfs', size = 64, fstype = 'ext2', dest = '.mnt') {
   const opts = { clean: true, static: true, dump: true, silent: true }
-  const config = configure.run(src, opts)
-  const cfg = await build.run(config, opts)
+  const cfg = await build.run(configure.run(src, opts), opts)
   const files = getFiles(cfg)
   const lastFile = files.sort(sortByModified)[0]
   const app = src.slice(0, src.lastIndexOf('.'))

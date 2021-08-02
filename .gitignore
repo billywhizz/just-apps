@@ -27,3 +27,4 @@ linux-5.6.9
 kvm/assets/firecracker
 kvm/assets/vmlinux
 kvm/assets/vmlinux.bin
+node_modules

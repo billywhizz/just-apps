@@ -1,0 +1,7 @@
+{
+  "name": "justus-league",
+  "version": "0.0.1",
+  "scripts": {
+    "start": "app/just server.js"
+  }
+}

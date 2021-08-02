@@ -16,7 +16,7 @@ function dd (path = 'rootfs', size = 64) {
   const chunks = (size * 1024) / 4
   const buf = new ArrayBuffer(4096)
   for (let i = 0; i < chunks; i++) {
-    net.write(fd, buf)
+    net.write(fd, buf, 4096)
   }
   net.close(fd)
 }
@@ -61,7 +61,7 @@ mount -t sysfs none /sys
 # configure the network
 ip addr add 172.16.0.2/24 dev eth0
 ip link set eth0 up
-ip route add default via 172.16.0.1 dev eth0
+ip route add default via 172.16.0.2 dev eth0
 `)
   r = fs.chmod(fd, S_IRWXU | S_IRWXG | S_IROTH)
   r = net.close(fd)
@@ -86,7 +86,7 @@ ip route add default via 172.16.0.1 dev eth0
   r = makeNode(`${dest}/dev/tty3`, 'c', 'rw-w--', 4, 3)
   r = makeNode(`${dest}/dev/tty4`, 'c', 'rw-w--', 4, 4)
   // copy the httpd app into the bin directory
-  r = copyFile('httpd', `${dest}/bin/httpd`)
+  //r = copyFile('httpd', `${dest}/bin/httpd`)
   // copy the busybox into the bin directory
   r = copyFile('busybox', `${dest}/bin/busybox`)
   // symlink /sbin/init to /bin/${app}

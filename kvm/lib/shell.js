@@ -96,7 +96,8 @@ async function start (mode = 'js') {
 
   function prompt () {
     const color = (mode === 'sh' ? AG : AY)
-    write(STDOUT_FILENO, calloc(1, `${color}>${AD} `))
+    const b = ArrayBuffer.fromString(`${color}>${AD} `)
+    write(STDOUT_FILENO, b, b.byteLength, 0)
   }
 
   try {
@@ -105,10 +106,10 @@ async function start (mode = 'js') {
     signal.sigaction(signal.SIGCHLD, signum => {})
     signal.sigaction(signal.SIGTERM, signum => just.exit(1, signum))
     r = loop.add(STDIN_FILENO, (fd, event) => {
-      let bytes = read(fd, buf)
+      let bytes = read(fd, buf, 0, buf.byteLength)
       while (bytes > 0) {
         prompt(command(readString(buf, bytes).trim()))
-        bytes = read(fd, buf)
+        bytes = read(fd, buf, 0, buf.byteLength)
       }
       if (bytes === 0) {
         just.error('closing stdin')
@@ -122,13 +123,16 @@ async function start (mode = 'js') {
       }
     })
     if (r < 0) throw new SystemError('loop.add')
-    const bb = process.launch('busybox', ['--list'])
-    const chunks = []
-    bb.onStdout = (buf, len) => chunks.push(buf.readString(len))
-    const status = await process.watch(bb)
-    if (status === 0) {
-      chunks.join('').split('\n').forEach(p => programs.add(p.trim()))
-    }
+    //const bb = process.launch('busybox', ['--list'])
+    //const chunks = []
+    //bb.onStdout = (buf, len) => {
+    //  just.print(`len: ${len}`)
+    //  chunks.push(buf.readString(len))
+    //}
+    //const status = await process.watch(bb)
+    //if (status === 0) {
+    //  chunks.join('').split('\n').forEach(p => programs.add(p.trim()))
+    //}
     prompt()
   } catch (err) {
     just.error(err.stack)
